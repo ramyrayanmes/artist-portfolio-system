@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artist Portfolio & Gallery</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <header>
+    <div class="brand-logo" id="artist-name">Artist Portfolio</div>
+    <nav class="nav-links">
+      <a href="index.html">Gallery</a>
+      <a href="admin.html">Admin Dashboard</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+      <select id="filter-phase" onchange="loadArtworks()" style="padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc;">
+        <option value="ALL">All Collections</option>
+      </select>
+      <select id="filter-medium" onchange="loadArtworks()" style="padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc;">
+        <option value="ALL">All Mediums</option>
+      </select>
+      <select id="filter-status" onchange="loadArtworks()" style="padding: 8px 12px; border-radius: 4px; border: 1px solid #ccc;">
+        <option value="ALL">All Statuses</option>
+      </select>
+    </div>
+
+    <div id="artwork-count" style="font-size: 9pt; color: #666; margin-bottom: 10px;">Loading gallery...</div>
+
+    <div id="artwork-grid" class="artwork-grid">
+      <!-- Artworks will be populated dynamically -->
+    </div>
+  </main>
+
+  <script>
+    // Configured via environment or public variables
+    const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function fetchBranding() {
+      const { data, error } = await supabaseClient.from('branding_config').select('*');
+      if (data) {
+        const config = {};
+        data.forEach(item => config[item.key] = item.value);
+        if (config.Artist_Name) {
+          document.getElementById('artist-name').innerText = config.Artist_Name;
+        }
+      }
+    }
+
+    async function loadArtworks() {
+      let query = supabaseClient.from('artworks').select('*');
+
+      const phase = document.getElementById('filter-phase').value;
+      const medium = document.getElementById('filter-medium').value;
+      const status = document.getElementById('filter-status').value;
+
+      if (phase !== 'ALL') query = query.eq('phase_collection', phase);
+      if (medium !== 'ALL') query = query.eq('medium', medium);
+      if (status !== 'ALL') query = query.eq('status', status);
+
+      const { data: artworks, error } = await query;
+
+      const grid = document.getElementById('artwork-grid');
+      const count = document.getElementById('artwork-count');
+      grid.innerHTML = '';
+
+      if (error || !artworks || artworks.length === 0) {
+        count.innerText = 'No artworks found matching criteria.';
+        return;
+      }
+
+      count.innerText = `Showing ${artworks.length} artwork(s)`;
+
+      artworks.forEach(art => {
+        const card = document.createElement('div');
+        card.className = 'artwork-card';
+
+        const displayPrice = art.price ? `$${parseFloat(art.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : art.status;
+        const imgUrl = art.image_url || 'https://via.placeholder.com/300x200?text=No+Image';
+
+        card.innerHTML = `
+          <div class="phase-tag">${art.phase_collection || 'Unassigned'}</div>
+          <img src="${imgUrl}" class="artwork-thumb" alt="${art.title}" />
+          <div class="artwork-info">
+            <div class="artwork-card-title">${art.title}</div>
+            <div class="artwork-card-meta">${art.medium || ''}</div>
+            <div class="artwork-card-meta">${art.height_cm || 0} × ${art.width_cm || 0} cm (${art.height_inches || 0} × ${art.width_inches || 0} in)</div>
+            <div class="artwork-card-price">${displayPrice}</div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    window.onload = () => {
+      fetchBranding();
+      loadArtworks();
+    };
+  </script>
+</body>
+</html>
