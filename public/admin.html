@@ -7,6 +7,43 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    #auth-screen { display: flex; justify-content: center; align-items: center; height: 80vh; }
+    #admin-app { display: none; }
+    
+    /* Toast Notification */
+    #toast {
+      visibility: hidden;
+      min-width: 250px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 4px;
+      padding: 12px;
+      position: fixed;
+      z-index: 3000;
+      right: 20px;
+      bottom: 20px;
+      font-size: 9pt;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    #toast.show { visibility: visible; animation: fadein 0.3s, fadeout 0.5s 2.5s; }
+    @keyframes fadein { from { bottom: 0; opacity: 0; } to { bottom: 20px; opacity: 1; } }
+    @keyframes fadeout { from { bottom: 20px; opacity: 1; } to { bottom: 0; opacity: 0; } }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid var(--accent-color);
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
 </head>
 <body>
 
@@ -14,10 +51,30 @@
     <div class="brand-logo">Admin Dashboard</div>
     <nav class="nav-links">
       <a href="index.html">View Public Gallery</a>
+      <a href="#" id="logout-btn" onclick="handleLogout()" style="display:none;">Logout</a>
     </nav>
   </header>
 
-  <main class="container">
+  <!-- Secure Login Screen -->
+  <div id="auth-screen" class="container">
+    <div style="background: #fff; padding: 30px; border-radius: 6px; border: 1px solid #e5e5e5; width: 100%; max-width: 400px;">
+      <h3 style="font-family: 'Cinzel', serif; margin-bottom: 15px; font-size: 12pt; text-align: center;">Admin Authentication</h3>
+      <form onsubmit="handleLogin(event)" style="display: flex; flex-direction: column; gap: 12px;">
+        <div>
+          <label style="font-size: 8pt; font-weight: 600; display: block; margin-bottom: 3px;">Email Address</label>
+          <input type="email" id="login-email" class="form-control" required style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+        </div>
+        <div>
+          <label style="font-size: 8pt; font-weight: 600; display: block; margin-bottom: 3px;">Password</label>
+          <input type="password" id="login-password" class="form-control" required style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+        </div>
+        <button type="submit" id="login-btn" style="background: var(--primary-color); color: #fff; border: none; padding: 10px; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 5px;">Login to Dashboard</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Admin Interface -->
+  <main class="container" id="admin-app">
     <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; align-items: start;">
       
       <!-- Add New Artwork Form -->
@@ -49,11 +106,11 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div>
               <label style="font-size: 8pt; font-weight: 600; display: block; margin-bottom: 3px;">Height (cm)</label>
-              <input type="number" step="0.1" id="new-hcm" class="form-control" oninput="calcInches()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+              <input type="number" step="0.1" id="new-hcm" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
             </div>
             <div>
               <label style="font-size: 8pt; font-weight: 600; display: block; margin-bottom: 3px;">Width (cm)</label>
-              <input type="number" step="0.1" id="new-wcm" class="form-control" oninput="calcInches()" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+              <input type="number" step="0.1" id="new-wcm" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
             </div>
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -67,7 +124,7 @@
               </select>
             </div>
             <div>
-              <label style="font-size: 8pt; font-weight: 600; display: block; margin-bottom: 3px;">Price ($)</label>
+              <label style="font-size: 8pt; font-weight: 600; display: block; margin-bottom: 3px;">Price (EGP)</label>
               <input type="number" id="new-price" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
             </div>
           </div>
@@ -75,7 +132,7 @@
             <label style="font-size: 8pt; font-weight: 600; display: block; margin-bottom: 3px;">Artwork Image File</label>
             <input type="file" id="new-image-file" accept="image/*" style="font-size: 8.5pt;" required>
           </div>
-          <button type="submit" style="background: var(--primary-color); color: #fff; border: none; padding: 10px; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 5px;">Save & Upload Artwork</button>
+          <button type="submit" id="submit-art-btn" style="background: var(--primary-color); color: #fff; border: none; padding: 10px; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 5px;">Save & Upload Artwork</button>
         </form>
       </div>
 
@@ -90,7 +147,163 @@
     </div>
   </main>
 
+  <div id="toast"></div>
+
   <script>
     const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
     const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-    const supabaseClient
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        showAdminApp();
+      }
+    });
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      const loginBtn = document.getElementById('login-btn');
+
+      loginBtn.innerHTML = '<span class="spinner"></span> Authenticating...';
+      
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      
+      if (error) {
+        showToast("Login failed: " + error.message);
+        loginBtn.innerHTML = 'Login to Dashboard';
+      } else {
+        showToast("Login successful!");
+        showAdminApp();
+      }
+    }
+
+    async function handleLogout() {
+      await supabaseClient.auth.signOut();
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('admin-app').style.display = 'none';
+      document.getElementById('logout-btn').style.display = 'none';
+      showToast("Logged out successfully.");
+    }
+
+    function showAdminApp() {
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('admin-app').style.display = 'block';
+      document.getElementById('logout-btn').style.display = 'inline';
+      loadAdminInventory();
+    }
+
+    async function loadAdminInventory() {
+      const { data: artworks, error } = await supabaseClient.from('artworks').select('*').order('artwork_id', { ascending: true });
+      const listContainer = document.getElementById('admin-inventory-list');
+      listContainer.innerHTML = '';
+
+      if (error || !artworks || artworks.length === 0) {
+        listContainer.innerHTML = '<div style="font-size: 9pt; color: #666;">No artworks found in inventory.</div>';
+        return;
+      }
+
+      artworks.forEach(art => {
+        const item = document.createElement('div');
+        item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid #eee; border-radius: 4px; background: #fafafa;';
+        
+        const priceDisplay = art.price ? `${art.price} EGP` : art.status;
+        item.innerHTML = `
+          <div>
+            <div style="font-weight: bold; font-size: 9.5pt;">${art.artwork_id} - ${art.title}</div>
+            <div style="font-size: 8pt; color: #666;">${art.phase_collection || 'Unassigned'} | Price: ${priceDisplay}</div>
+          </div>
+          <button onclick="deleteArtwork('${art.artwork_id}')" style="background: #d9534f; color: #fff; border: none; padding: 5px 10px; border-radius: 3px; font-size: 7.5pt; cursor: pointer;">Delete</button>
+        `;
+        listContainer.appendChild(item);
+      });
+    }
+
+    async function handleAddNewArtwork(e) {
+      e.preventDefault();
+      const fileInput = document.getElementById('new-image-file');
+      const file = fileInput.files[0];
+      const submitBtn = document.getElementById('submit-art-btn');
+      
+      submitBtn.innerHTML = '<span class="spinner"></span> Uploading image & saving...';
+      submitBtn.disabled = true;
+
+      let publicImageUrl = '';
+
+      if (file) {
+        const filePath = `artwork_${Date.now()}_${file.name}`;
+        const { data: uploadData, error: uploadError } = await supabaseClient.storage
+          .from('artworks-bucket')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          showToast('Image upload failed: ' + uploadError.message);
+          submitBtn.innerHTML = 'Save & Upload Artwork';
+          submitBtn.disabled = false;
+          return;
+        }
+
+        const { data: urlData } = supabaseClient.storage
+          .from('artworks-bucket')
+          .getPublicUrl(filePath);
+        
+        publicImageUrl = urlData.publicUrl;
+      }
+
+      const hCm = parseFloat(document.getElementById('new-hcm').value) || 0;
+      const wCm = parseFloat(document.getElementById('new-wcm').value) || 0;
+
+      const payload = {
+        artwork_id: document.getElementById('new-id').value,
+        title: document.getElementById('new-title').value,
+        phase_collection: document.getElementById('new-phase').value,
+        medium: document.getElementById('new-medium').value,
+        year: parseInt(document.getElementById('new-year').value) || null,
+        height_cm: hCm,
+        width_cm: wCm,
+        height_inches: Math.round((hCm / 2.54) * 10) / 10,
+        width_inches: Math.round((wCm / 2.54) * 10) / 10,
+        status: document.getElementById('new-status').value,
+        price: parseFloat(document.getElementById('new-price').value) || 0,
+        image_url: publicImageUrl
+      };
+
+      const { error } = await supabaseClient.from('artworks').insert([payload]);
+      
+      submitBtn.innerHTML = 'Save & Upload Artwork';
+      submitBtn.disabled = false;
+
+      if (error) {
+        showToast('Error saving artwork: ' + error.message);
+      } else {
+        showToast('Artwork added successfully!');
+        document.getElementById('add-artwork-form').reset();
+        loadAdminInventory();
+      }
+    }
+
+    async function deleteArtwork(artworkId) {
+      if (!confirm(`Are you sure you want to delete ${artworkId}?`)) return;
+      
+      showToast('Deleting artwork...');
+      const { error } = await supabaseClient.from('artworks').delete().eq('artwork_id', artworkId);
+      
+      if (error) {
+        showToast('Error deleting: ' + error.message);
+      } else {
+        showToast('Artwork deleted.');
+        loadAdminInventory();
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.className = 'show';
+      setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000);
+    }
+  </script>
+</body>
+</html>

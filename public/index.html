@@ -85,7 +85,7 @@
         const card = document.createElement('div');
         card.className = 'artwork-card';
 
-        const displayPrice = art.price ? `$${parseFloat(art.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : art.status;
+        const displayPrice = art.price ? `${parseFloat(art.price).toLocaleString('en-US', { minimumFractionDigits: 2 })} EGP` : art.status;
         const imgUrl = art.image_url || 'https://via.placeholder.com/300x200?text=No+Image';
 
         card.innerHTML = `
