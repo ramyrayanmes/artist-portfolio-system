@@ -11,6 +11,102 @@
     #auth-screen { display: flex; justify-content: center; align-items: center; height: 80vh; }
     #admin-app { display: none; }
     
+    .admin-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 25px;
+      align-items: start;
+    }
+
+    .form-card {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 6px;
+      border: 1px solid #e5e5e5;
+      position: sticky;
+      top: 20px;
+    }
+
+    .inventory-container {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 6px;
+      border: 1px solid #e5e5e5;
+    }
+
+    .admin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 15px;
+    }
+
+    .artwork-card {
+      background: var(--card-bg, #ffffff);
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .phase-tag {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: var(--accent-color, #c5a059);
+      color: #ffffff;
+      font-size: 7.5pt;
+      font-weight: bold;
+      padding: 3px 8px;
+      border-radius: 3px;
+    }
+
+    .artwork-thumb {
+      width: 100%;
+      height: 160px;
+      object-fit: contain;
+      background: #fafafa;
+      border-bottom: 1px solid #eee;
+    }
+
+    .artwork-info { padding: 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .artwork-card-title { font-family: 'Cinzel', serif; font-weight: bold; font-size: 10pt; }
+    .artwork-card-meta { font-size: 8pt; color: #666; }
+    .artwork-card-price { font-size: 9pt; font-weight: bold; color: var(--accent-color, #c5a059); margin-top: 4px; }
+    
+    .card-actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 6px;
+    }
+
+    /* Modal Overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.6);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+      padding: 15px;
+    }
+    .modal-card {
+      background: #ffffff;
+      border-radius: 6px;
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .modal-header { font-family: 'Cinzel', serif; font-size: 12pt; font-weight: bold; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 15px; }
+    .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .full-width { grid-column: 1/-1; }
+
     /* Toast Notification */
     #toast {
       visibility: hidden;
@@ -33,7 +129,7 @@
 
     .spinner {
       border: 3px solid #f3f3f3;
-      border-top: 3px solid var(--accent-color);
+      border-top: 3px solid var(--accent-color, #c5a059);
       border-radius: 50%;
       width: 16px;
       height: 16px;
@@ -43,6 +139,11 @@
       margin-right: 6px;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    @media (max-width: 900px) {
+      .admin-layout { grid-template-columns: 1fr; }
+      .form-card { position: static; }
+    }
   </style>
 </head>
 <body>
@@ -50,8 +151,8 @@
   <header>
     <div class="brand-logo">Admin Dashboard</div>
     <nav class="nav-links">
-      <a href="index.html">View Public Gallery</a>
-      <a href="#" id="logout-btn" onclick="handleLogout()" style="display:none;">Logout</a>
+      <a href="index.html" style="color:#fff; text-decoration:none; font-size:9pt; font-weight:500;">View Public Gallery</a>
+      <a href="#" id="logout-btn" onclick="handleLogout()" style="display:none; color:#fff; text-decoration:none; font-size:9pt; font-weight:500;">Logout</a>
     </nav>
   </header>
 
@@ -68,17 +169,17 @@
           <label style="font-size: 8pt; font-weight: 600; display: block; margin-bottom: 3px;">Password</label>
           <input type="password" id="login-password" class="form-control" required style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
         </div>
-        <button type="submit" id="login-btn" style="background: var(--primary-color); color: #fff; border: none; padding: 10px; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 5px;">Login to Dashboard</button>
+        <button type="submit" id="login-btn" style="background: var(--primary-color, #1a1a1a); color: #fff; border: none; padding: 10px; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 5px;">Login to Dashboard</button>
       </form>
     </div>
   </div>
 
   <!-- Main Admin Interface -->
-  <main class="container" id="admin-app">
-    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; align-items: start;">
+  <main class="container" id="admin-app" style="max-width: 1300px; margin: 30px auto; padding: 0 20px;">
+    <div class="admin-layout">
       
       <!-- Add New Artwork Form -->
-      <div style="background: #fff; padding: 20px; border-radius: 6px; border: 1px solid #e5e5e5;">
+      <div class="form-card">
         <h3 style="font-family: 'Cinzel', serif; margin-bottom: 15px; font-size: 11pt;">Add New Artwork</h3>
         <form id="add-artwork-form" onsubmit="handleAddNewArtwork(event)" style="display: flex; flex-direction: column; gap: 10px;">
           <div>
@@ -132,14 +233,15 @@
             <label style="font-size: 8pt; font-weight: 600; display: block; margin-bottom: 3px;">Artwork Image File</label>
             <input type="file" id="new-image-file" accept="image/*" style="font-size: 8.5pt;" required>
           </div>
-          <button type="submit" id="submit-art-btn" style="background: var(--primary-color); color: #fff; border: none; padding: 10px; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 5px;">Save & Upload Artwork</button>
+          <button type="submit" id="submit-art-btn" style="background: var(--primary-color, #1a1a1a); color: #fff; border: none; padding: 10px; border-radius: 4px; font-weight: 600; cursor: pointer; margin-top: 5px;">Save & Upload Artwork</button>
         </form>
       </div>
 
-      <!-- Inventory Table / List -->
-      <div style="background: #fff; padding: 20px; border-radius: 6px; border: 1px solid #e5e5e5;">
-        <h3 style="font-family: 'Cinzel', serif; margin-bottom: 15px; font-size: 11pt;">Existing Inventory</h3>
-        <div id="admin-inventory-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 600px; overflow-y: auto;">
+      <!-- Inventory Grid -->
+      <div class="inventory-container">
+        <h3 style="font-family: 'Cinzel', serif; margin-bottom: 5px; font-size: 11pt;">Existing Inventory Management</h3>
+        <div id="admin-artwork-count" style="font-size: 8.5pt; color: #666; margin-bottom: 15px;">Loading inventory...</div>
+        <div id="admin-inventory-grid" class="admin-grid">
           <!-- Populated dynamically -->
         </div>
       </div>
@@ -147,9 +249,67 @@
     </div>
   </main>
 
+  <!-- Edit Artwork Modal Overlay -->
+  <div class="modal-overlay" id="edit-modal">
+    <div class="modal-card">
+      <div class="modal-header">Edit Artwork Details</div>
+      <form id="edit-artwork-form" onsubmit="submitArtworkEdit(event)">
+        <input type="hidden" id="edit-art-id">
+        <div class="modal-grid">
+          <div class="form-group full-width">
+            <label style="font-size:8pt; font-weight:600; display:block; margin-bottom:3px;">Title</label>
+            <input type="text" id="edit-art-title" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required>
+          </div>
+          <div class="form-group">
+            <label style="font-size:8pt; font-weight:600; display:block; margin-bottom:3px;">Collection / Phase</label>
+            <input type="text" id="edit-art-phase" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required>
+          </div>
+          <div class="form-group">
+            <label style="font-size:8pt; font-weight:600; display:block; margin-bottom:3px;">Year</label>
+            <input type="number" id="edit-art-year" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+          </div>
+          <div class="form-group full-width">
+            <label style="font-size:8pt; font-weight:600; display:block; margin-bottom:3px;">Medium</label>
+            <input type="text" id="edit-art-medium" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+          </div>
+          <div class="form-group">
+            <label style="font-size:8pt; font-weight:600; display:block; margin-bottom:3px;">Height (CM)</label>
+            <input type="number" step="0.1" id="edit-art-hcm" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required>
+          </div>
+          <div class="form-group">
+            <label style="font-size:8pt; font-weight:600; display:block; margin-bottom:3px;">Width (CM)</label>
+            <input type="number" step="0.1" id="edit-art-wcm" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;" required>
+          </div>
+          <div class="form-group">
+            <label style="font-size:8pt; font-weight:600; display:block; margin-bottom:3px;">Status</label>
+            <select id="edit-art-status" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+              <option value="Available">Available</option>
+              <option value="Sold">Sold</option>
+              <option value="NFS">NFS</option>
+              <option value="POA">POA</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label style="font-size:8pt; font-weight:600; display:block; margin-bottom:3px;">Price (EGP)</label>
+            <input type="number" id="edit-art-price" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+          </div>
+          <div class="form-group full-width">
+            <label style="font-size:8pt; font-weight:600; display:block; margin-bottom:3px;">Image URL (Optional update)</label>
+            <input type="text" id="edit-art-url" class="form-control" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;">
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+          <button type="submit" id="edit-submit-btn" style="background: var(--accent-color, #c5a059); color: #fff; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 600; cursor: pointer;">Save Changes</button>
+          <button type="button" onclick="closeEditModal()" style="background: #e0e0e0; color: #333; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 600; cursor: pointer;">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="toast"></div>
 
   <script>
+    // REPLACE WITH YOUR ACTUAL SUPABASE CREDENTIALS
     const SUPABASE_URL = 'https://vuifcweuslilgxsggsei.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_jm_dvdw_BGDNfkzKPniO6A_Em0EgOun';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -197,27 +357,40 @@
 
     async function loadAdminInventory() {
       const { data: artworks, error } = await supabaseClient.from('artworks').select('*').order('artwork_id', { ascending: true });
-      const listContainer = document.getElementById('admin-inventory-list');
-      listContainer.innerHTML = '';
+      const grid = document.getElementById('admin-inventory-grid');
+      const countBadge = document.getElementById('admin-artwork-count');
+      grid.innerHTML = '';
 
       if (error || !artworks || artworks.length === 0) {
-        listContainer.innerHTML = '<div style="font-size: 9pt; color: #666;">No artworks found in inventory.</div>';
+        countBadge.innerText = "0 artworks in inventory.";
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 30px; color: #666;">No artworks found in inventory.</div>';
         return;
       }
 
+      countBadge.innerText = `Managing ${artworks.length} artwork(s)`;
+
       artworks.forEach(art => {
-        const item = document.createElement('div');
-        item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid #eee; border-radius: 4px; background: #fafafa;';
-        
-        const priceDisplay = art.price ? `${art.price} EGP` : art.status;
-        item.innerHTML = `
-          <div>
-            <div style="font-weight: bold; font-size: 9.5pt;">${art.artwork_id} - ${art.title}</div>
-            <div style="font-size: 8pt; color: #666;">${art.phase_collection || 'Unassigned'} | Price: ${priceDisplay}</div>
+        const card = document.createElement('div');
+        card.className = 'artwork-card';
+
+        const displayPrice = art.price ? `${parseFloat(art.price).toLocaleString('en-US', { minimumFractionDigits: 2 })} EGP` : (art.status || 'POA');
+        const imgUrl = art.image_url || 'https://via.placeholder.com/300x200?text=No+Image';
+
+        card.innerHTML = `
+          <div class="phase-tag">${art.phase_collection || 'Unassigned'}</div>
+          <img src="${imgUrl}" class="artwork-thumb" alt="${art.title}" />
+          <div class="artwork-info">
+            <div class="artwork-card-title">${art.artwork_id}: ${art.title || 'Untitled'}</div>
+            <div class="artwork-card-meta">${art.medium || 'Unspecified'}</div>
+            <div class="artwork-card-meta">${art.height_cm || 0} × ${art.width_cm || 0} cm</div>
+            <div class="artwork-card-price">${displayPrice}</div>
+            <div class="card-actions">
+              <button onclick='openEditModal(${JSON.stringify(art)})' style="background: var(--primary-color, #1a1a1a); color: #fff; border: none; padding: 6px 10px; border-radius: 3px; font-size: 7.5pt; font-weight: 600; cursor: pointer;">Edit</button>
+              <button onclick="deleteArtwork('${art.artwork_id}')" style="background: #d9534f; color: #fff; border: none; padding: 6px 10px; border-radius: 3px; font-size: 7.5pt; font-weight: 600; cursor: pointer;">Delete</button>
+            </div>
           </div>
-          <button onclick="deleteArtwork('${art.artwork_id}')" style="background: #d9534f; color: #fff; border: none; padding: 5px 10px; border-radius: 3px; font-size: 7.5pt; cursor: pointer;">Delete</button>
         `;
-        listContainer.appendChild(item);
+        grid.appendChild(card);
       });
     }
 
@@ -280,6 +453,57 @@
       } else {
         showToast('Artwork added successfully!');
         document.getElementById('add-artwork-form').reset();
+        loadAdminInventory();
+      }
+    }
+
+    function openEditModal(art) {
+      document.getElementById('edit-art-id').value = art.artwork_id;
+      document.getElementById('edit-art-title').value = art.title || '';
+      document.getElementById('edit-art-phase').value = art.phase_collection || '';
+      document.getElementById('edit-art-year').value = art.year || '';
+      document.getElementById('edit-art-medium').value = art.medium || '';
+      document.getElementById('edit-art-hcm').value = art.height_cm || 0;
+      document.getElementById('edit-art-wcm').value = art.width_cm || 0;
+      document.getElementById('edit-art-status').value = art.status || 'Available';
+      document.getElementById('edit-art-price').value = art.price || 0;
+      document.getElementById('edit-art-url').value = art.image_url || '';
+      
+      document.getElementById('edit-modal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-modal').style.display = 'none';
+    }
+
+    async function submitArtworkEdit(e) {
+      e.preventDefault();
+      const artId = document.getElementById('edit-art-id').value;
+      const hCm = parseFloat(document.getElementById('edit-art-hcm').value) || 0;
+      const wCm = parseFloat(document.getElementById('edit-art-wcm').value) || 0;
+
+      const payload = {
+        title: document.getElementById('edit-art-title').value,
+        phase_collection: document.getElementById('edit-art-phase').value,
+        year: parseInt(document.getElementById('edit-art-year').value) || null,
+        medium: document.getElementById('edit-art-medium').value,
+        height_cm: hCm,
+        width_cm: wCm,
+        height_inches: Math.round((hCm / 2.54) * 10) / 10,
+        width_inches: Math.round((wCm / 2.54) * 10) / 10,
+        status: document.getElementById('edit-art-status').value,
+        price: parseFloat(document.getElementById('edit-art-price').value) || 0,
+        image_url: document.getElementById('edit-art-url').value
+      };
+
+      showToast("Saving changes...");
+      const { error } = await supabaseClient.from('artworks').update(payload).eq('artwork_id', artId);
+
+      if (error) {
+        showToast("Error updating: " + error.message);
+      } else {
+        showToast("Artwork updated successfully!");
+        closeEditModal();
         loadAdminInventory();
       }
     }
