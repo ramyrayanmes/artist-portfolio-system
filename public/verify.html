@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificate Verification - Artist Portfolio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: 'Montserrat', sans-serif; background: #fcfcfc; color: #222; margin: 0; padding: 0; }
+    .verify-container { max-width: 600px; margin: 50px auto; background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); text-align: center; }
+    .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 9pt; font-weight: bold; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+    .verified { background: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
+    .invalid { background: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
+    .art-title { font-family: 'Cinzel', serif; font-size: 16pt; font-weight: bold; margin-bottom: 15px; }
+    .details-box { text-align: left; background: #fafafa; border: 1px solid #eee; padding: 20px; border-radius: 6px; margin: 20px 0; font-size: 9.5pt; line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+  <div class="verify-container" id="verify-box">
+    <div id="status-display">Checking authenticity registry...</div>
+    <div id="artwork-info" style="display:none;">
+      <div class="art-title" id="v-title"></div>
+      <div class="details-box">
+        <div><strong>Artwork ID:</strong> <span id="v-id"></span></div>
+        <div><strong>Collection:</strong> <span id="v-phase"></span></div>
+        <div><strong>Medium:</strong> <span id="v-medium"></span></div>
+        <div><strong>Year:</strong> <span id="v-year"></span></div>
+        <div><strong>Dimensions:</strong> <span id="v-dims"></span></div>
+      </div>
+      <p style="font-size: 8.5pt; color: #666;">This certificate is officially verified and registered in the artist's inventory database.</p>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://your-project-id.supabase.co';
+    const SUPABASE_ANON_KEY = 'your-anon-key-here';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Secret salt for HMAC verification (must match admin generator)
+    const HMAC_SECRET = "ArtistPortfolioSecretKey2026";
+
+    async function computeHMAC(message) {
+      const msgUint8 = new TextEncoder().encode(message);
+      const keyUint8 = new TextEncoder().encode(HMAC_SECRET);
+      const key = await crypto.subtle.importKey("raw", keyUint8, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+      const signature = await crypto.subtle.sign("HMAC", key, msgUint8);
+      return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const params = new URLSearchParams(window.location.search);
+      const artId = params.get('id');
+      const providedSig = params.get('sig');
+      const statusDiv = document.getElementById('status-display');
+
+      if (!artId || !providedSig) {
+        statusDiv.innerHTML = `<div class="status-badge invalid">Invalid Certificate Link</div><p>Missing verification parameters.</p>`;
+        return;
+      }
+
+      const { data, error } = await supabaseClient.from('artworks').select('*').eq('artwork_id', artId).single();
+
+      if (error || !data) {
+        statusDiv.innerHTML = `<div class="status-badge invalid">Record Not Found</div><p>No matching artwork record exists in the database for ID: <strong>${artId}</strong>.</p>`;
+        return;
+      }
+
+      // Recompute HMAC to verify authenticity
+      const expectedSig = await computeHMAC(`${data.artwork_id}|${data.title}`);
+
+      if (expectedSig === providedSig) {
+        statusDiv.innerHTML = `<div class="status-badge verified">Authentic Original Artwork</div>`;
+        document.getElementById('v-title').innerText = data.title;
+        document.getElementById('v-id').innerText = data.artwork_id;
+        document.getElementById('v-phase').innerText = data.phase_collection || 'N/A';
+        document.getElementById('v-medium').innerText = data.medium || 'N/A';
+        document.getElementById('v-year').innerText = data.year || 'N/A';
+        document.getElementById('v-dims').innerText = `${data.height_cm || 0} × ${data.width_cm || 0} cm`;
+        document.getElementById('artwork-info').style.display = 'block';
+      } else {
+        statusDiv.innerHTML = `<div class="status-badge invalid">Signature Mismatch</div><p>This certificate's digital signature could not be verified. It may have been tampered with.</p>`;
+      }
+    });
+  </script>
+</body>
+</html>
