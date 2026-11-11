@@ -8,6 +8,23 @@
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
+    body { margin: 0; font-family: 'Montserrat', sans-serif; background: #fcfcfc; color: #222; }
+    header { background: #1a1a1a; color: #fff; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; }
+    .brand-logo { font-family: 'Cinzel', serif; font-size: 13pt; font-weight: 700; letter-spacing: 1px; }
+    .nav-links { display: flex; gap: 15px; }
+    .container { max-width: 1200px; margin: 20px auto; padding: 0 15px; }
+
+    .bio-section {
+      background: #ffffff;
+      border: 1px solid #e5e5e5;
+      border-radius: 6px;
+      padding: 20px;
+      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+
     .filter-bar {
       background: #ffffff;
       padding: 15px;
@@ -15,7 +32,7 @@
       border: 1px solid #e5e5e5;
       margin-bottom: 20px;
       display: flex;
-      gap: 15px;
+      gap: 12px;
       flex-wrap: wrap;
       align-items: center;
     }
@@ -26,20 +43,13 @@
       border-radius: 4px;
       font-family: inherit;
       background: #fff;
+      width: 100%;
+      box-sizing: border-box;
     }
-    .bio-section {
-      background: #ffffff;
-      border: 1px solid #e5e5e5;
-      border-radius: 6px;
-      padding: 25px;
-      margin-bottom: 25px;
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 20px;
-    }
+    
     .artwork-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
       gap: 20px;
     }
     .artwork-card {
@@ -53,10 +63,7 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.02);
       transition: transform 0.2s ease;
     }
-    .artwork-card:hover {
-      box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-      transform: translateY(-2px);
-    }
+    .artwork-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
     .phase-tag {
       position: absolute;
       top: 10px;
@@ -67,16 +74,17 @@
       font-weight: bold;
       padding: 4px 8px;
       border-radius: 3px;
+      z-index: 2;
     }
     .artwork-thumb {
       width: 100%;
-      height: 190px;
+      height: 200px;
       object-fit: contain;
       background: #fafafa;
       border-bottom: 1px solid #eee;
       cursor: pointer;
     }
-    .artwork-info { padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+    .artwork-info { padding: 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
     .artwork-card-title { font-family: 'Cinzel', serif; font-weight: bold; font-size: 10pt; }
     .artwork-card-meta { font-size: 8pt; color: #666; }
     .artwork-card-price { font-size: 9.5pt; font-weight: bold; color: var(--accent-color, #c5a059); margin-top: 4px; }
@@ -86,35 +94,37 @@
       background: var(--primary-color, #1a1a1a);
       color: #fff;
       border: none;
-      padding: 6px 10px;
+      padding: 7px 10px;
       border-radius: 3px;
-      font-size: 7.5pt;
+      font-size: 8pt;
       font-weight: 600;
       cursor: pointer;
       text-align: center;
     }
     .inquire-btn:hover { background: var(--accent-color, #c5a059); }
 
-    /* Lightbox Modal */
+    /* Lightbox Modal with Arrows */
     .lightbox-overlay {
       display: none;
       position: fixed;
       top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0,0,0,0.85);
+      background: rgba(0,0,0,0.9);
       z-index: 2000;
       justify-content: center;
       align-items: center;
-      padding: 20px;
+      padding: 10px;
+      box-sizing: border-box;
     }
     .lightbox-container {
       background: #fff;
       border-radius: 6px;
-      max-width: 800px;
+      max-width: 950px;
       width: 100%;
-      max-height: 90vh;
+      max-height: 92vh;
       overflow-y: auto;
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1.3fr 1fr;
+      position: relative;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
     .lightbox-img-wrap {
@@ -123,10 +133,12 @@
       align-items: center;
       justify-content: center;
       padding: 20px;
+      position: relative;
+      min-height: 300px;
     }
     .lightbox-img {
       max-width: 100%;
-      max-height: 70vh;
+      max-height: 75vh;
       object-fit: contain;
     }
     .lightbox-details {
@@ -135,6 +147,23 @@
       flex-direction: column;
       justify-content: space-between;
     }
+    .lightbox-nav-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      border: none;
+      font-size: 16pt;
+      padding: 10px 14px;
+      cursor: pointer;
+      border-radius: 4px;
+      z-index: 10;
+      transition: background 0.2s;
+    }
+    .lightbox-nav-btn:hover { background: var(--accent-color, #c5a059); }
+    .lightbox-prev { left: 10px; }
+    .lightbox-next { right: 10px; }
 
     /* Inquiry Modal */
     .modal-overlay {
@@ -146,6 +175,7 @@
       justify-content: center;
       align-items: center;
       padding: 15px;
+      box-sizing: border-box;
     }
     .modal-card {
       background: #ffffff;
@@ -156,7 +186,6 @@
       box-shadow: 0 10px 25px rgba(0,0,0,0.3);
     }
 
-    /* Toast Notification */
     #toast {
       visibility: hidden;
       min-width: 250px;
@@ -176,9 +205,10 @@
     @keyframes fadein { from { bottom: 0; opacity: 0; } to { bottom: 20px; opacity: 1; } }
     @keyframes fadeout { from { bottom: 20px; opacity: 1; } to { bottom: 0; opacity: 0; } }
 
-    @media (max-width: 768px) {
+    @media (max-width: 850px) {
       .bio-section { grid-template-columns: 1fr; }
-      .lightbox-container { grid-template-columns: 1fr; max-width: 500px; }
+      .lightbox-container { grid-template-columns: 1fr; max-height: 95vh; }
+      .filter-bar { flex-direction: column; align-items: stretch; }
     }
   </style>
 </head>
@@ -188,56 +218,56 @@
     <div class="brand-logo" id="header-artist-name">Artist Portfolio</div>
     <nav class="nav-links">
       <a href="index.html" style="color:#fff; text-decoration:none; font-size:9pt; font-weight:500;">Gallery</a>
-      <a href="admin.html" style="color:#fff; text-decoration:none; font-size:9pt; font-weight:500;">Admin Dashboard</a>
+      <a href="admin.html" style="color:#fff; text-decoration:none; font-size:9pt; font-weight:500;">Admin</a>
     </nav>
   </header>
 
-  <main class="container" style="max-width: 1200px; margin: 30px auto; padding: 0 20px;">
+  <main class="container">
     
     <!-- Artist Bio & Contact Banner -->
     <div class="bio-section">
       <div>
-        <h2 id="bio-title" style="font-family: 'Cinzel', serif; font-size: 14pt; margin-bottom: 10px;">About the Artist</h2>
-        <p id="artist-statement" style="font-size: 9pt; color: #444; line-height: 1.6; margin-bottom: 10px;">Loading artist statement...</p>
-        <p id="artist-bio" style="font-size: 8.5pt; color: #666; line-height: 1.5;"></p>
+        <h2 id="bio-title" style="font-family: 'Cinzel', serif; font-size: 13pt; margin-bottom: 8px;">About the Artist</h2>
+        <p id="artist-statement" style="font-size: 8.5pt; color: #444; line-height: 1.6; margin-bottom: 8px;">Loading statement...</p>
+        <p id="artist-bio" style="font-size: 8pt; color: #666; line-height: 1.5;"></p>
       </div>
-      <div style="border-left: 1px solid #eee; padding-left: 20px; display: flex; flex-direction: column; justify-content: center; gap: 8px;">
-        <h4 style="font-family: 'Cinzel', serif; font-size: 10pt; margin-bottom: 5px;">Inquiries & Contact</h4>
-        <div style="font-size: 8.5pt; color: #555;"><strong>Email:</strong> <span id="contact-email">Loading...</span></div>
-        <div style="font-size: 8.5pt; color: #555;"><strong>Phone:</strong> <span id="contact-phone">Loading...</span></div>
-        <div style="font-size: 8.5pt; color: #555;"><strong>Location:</strong> <span id="contact-location">Cairo, Egypt</span></div>
+      <div style="border-left: 1px solid #eee; padding-left: 15px; display: flex; flex-direction: column; justify-content: center; gap: 6px;">
+        <h4 style="font-family: 'Cinzel', serif; font-size: 9.5pt; margin-bottom: 3px;">Inquiries & Contact</h4>
+        <div style="font-size: 8pt; color: #555;"><strong>Email:</strong> <span id="contact-email">Loading...</span></div>
+        <div style="font-size: 8pt; color: #555;"><strong>Phone:</strong> <span id="contact-phone">Loading...</span></div>
+        <div style="font-size: 8pt; color: #555;"><strong>Location:</strong> Cairo, Egypt</div>
       </div>
     </div>
 
     <!-- Filter & Currency Bar -->
     <div class="filter-bar">
-      <div style="flex: 1; min-width: 140px;">
-        <label style="display:block; font-size:8pt; font-weight:600; margin-bottom:3px; color:#555;">Collection / Phase</label>
-        <select id="filter-phase" class="form-control" style="width:100%;" onchange="loadArtworks()">
+      <div style="flex: 1; min-width: 130px;">
+        <label style="display:block; font-size:7.5pt; font-weight:600; margin-bottom:2px; color:#555;">Collection</label>
+        <select id="filter-phase" class="form-control" onchange="loadArtworks()">
           <option value="ALL">All Collections</option>
         </select>
       </div>
-      <div style="flex: 1; min-width: 140px;">
-        <label style="display:block; font-size:8pt; font-weight:600; margin-bottom:3px; color:#555;">Medium</label>
-        <select id="filter-medium" class="form-control" style="width:100%;" onchange="loadArtworks()">
+      <div style="flex: 1; min-width: 130px;">
+        <label style="display:block; font-size:7.5pt; font-weight:600; margin-bottom:2px; color:#555;">Medium</label>
+        <select id="filter-medium" class="form-control" onchange="loadArtworks()">
           <option value="ALL">All Mediums</option>
         </select>
       </div>
-      <div style="flex: 1; min-width: 130px;">
-        <label style="display:block; font-size:8pt; font-weight:600; margin-bottom:3px; color:#555;">Status</label>
-        <select id="filter-status" class="form-control" style="width:100%;" onchange="loadArtworks()">
+      <div style="flex: 1; min-width: 120px;">
+        <label style="display:block; font-size:7.5pt; font-weight:600; margin-bottom:2px; color:#555;">Status</label>
+        <select id="filter-status" class="form-control" onchange="loadArtworks()">
           <option value="ALL">All Statuses</option>
         </select>
       </div>
-      <div style="flex: 1; min-width: 110px;">
-        <label style="display:block; font-size:8pt; font-weight:600; margin-bottom:3px; color:#555;">Year</label>
-        <select id="filter-year" class="form-control" style="width:100%;" onchange="loadArtworks()">
+      <div style="flex: 1; min-width: 100px;">
+        <label style="display:block; font-size:7.5pt; font-weight:600; margin-bottom:2px; color:#555;">Year</label>
+        <select id="filter-year" class="form-control" onchange="loadArtworks()">
           <option value="ALL">All Years</option>
         </select>
       </div>
-      <div style="flex: 1; min-width: 130px;">
-        <label style="display:block; font-size:8pt; font-weight:600; margin-bottom:3px; color:#555;">Currency</label>
-        <select id="currency-selector" class="form-control" style="width:100%; font-weight:600; background:#f9f9f9;" onchange="changeCurrency()">
+      <div style="flex: 1; min-width: 110px;">
+        <label style="display:block; font-size:7.5pt; font-weight:600; margin-bottom:2px; color:#555;">Currency</label>
+        <select id="currency-selector" class="form-control" style="font-weight:600; background:#f9f9f9;" onchange="changeCurrency()">
           <option value="EGP">EGP (EGP)</option>
           <option value="USD">USD ($)</option>
           <option value="EUR">EUR (€)</option>
@@ -245,7 +275,7 @@
       </div>
     </div>
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 8.5pt; color: #666;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 8pt; color: #666;">
       <span id="artwork-count-badge">Loading artworks...</span>
     </div>
 
@@ -253,27 +283,29 @@
 
   </main>
 
-  <!-- Lightbox Modal Overlay -->
+  <!-- Lightbox Modal with Arrows -->
   <div class="lightbox-overlay" id="lightbox-modal" onclick="closeLightbox(event)">
     <div class="lightbox-container" onclick="event.stopPropagation()">
       <div class="lightbox-img-wrap">
-        <img id="lightbox-img" src="" class="lightbox-img" alt="Artwork Lightbox View" />
+        <button class="lightbox-nav-btn lightbox-prev" onclick="navigateLightbox(-1)">&#10094;</button>
+        <img id="lightbox-img" src="" class="lightbox-img" alt="Artwork View" />
+        <button class="lightbox-nav-btn lightbox-next" onclick="navigateLightbox(1)">&#10095;</button>
       </div>
       <div class="lightbox-details">
         <div>
           <div id="lightbox-phase" style="font-size: 7.5pt; font-weight: bold; color: var(--accent-color, #c5a059); text-transform: uppercase; margin-bottom: 4px;"></div>
-          <h3 id="lightbox-title" style="font-family: 'Cinzel', serif; font-size: 13pt; margin-bottom: 10px;"></h3>
-          <div style="font-size: 9pt; color: #555; display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;">
+          <h3 id="lightbox-title" style="font-family: 'Cinzel', serif; font-size: 12pt; margin-bottom: 8px;"></h3>
+          <div style="font-size: 8.5pt; color: #555; display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px;">
             <div><strong>Medium:</strong> <span id="lightbox-medium"></span></div>
             <div><strong>Year:</strong> <span id="lightbox-year"></span></div>
             <div><strong>Dimensions:</strong> <span id="lightbox-dims"></span></div>
             <div><strong>Status:</strong> <span id="lightbox-status"></span></div>
-            <div style="font-size: 11pt; font-weight: bold; color: var(--accent-color, #c5a059); margin-top: 5px;">Price: <span id="lightbox-price"></span></div>
+            <div style="font-size: 10.5pt; font-weight: bold; color: var(--accent-color, #c5a059); margin-top: 4px;">Price: <span id="lightbox-price"></span></div>
           </div>
         </div>
-        <div style="display: flex; gap: 10px;">
-          <button onclick="openInquiryFromLightbox()" class="inquire-btn" style="flex: 1; padding: 10px; font-size: 8.5pt;">Inquire About This Piece</button>
-          <button onclick="document.getElementById('lightbox-modal').style.display='none'" style="background: #e0e0e0; color: #333; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 8.5pt;">Close</button>
+        <div style="display: flex; gap: 8px;">
+          <button onclick="openInquiryFromLightbox()" class="inquire-btn" style="flex: 1; padding: 9px; font-size: 8pt;">Inquire About Piece</button>
+          <button onclick="document.getElementById('lightbox-modal').style.display='none'" style="background: #e0e0e0; color: #333; border: none; padding: 9px 12px; border-radius: 3px; font-weight: 600; cursor: pointer; font-size: 8pt;">Close</button>
         </div>
       </div>
     </div>
@@ -282,25 +314,25 @@
   <!-- Buyer Inquiry Modal -->
   <div class="modal-overlay" id="inquiry-modal">
     <div class="modal-card">
-      <div style="font-family: 'Cinzel', serif; font-size: 11pt; font-weight: bold; margin-bottom: 4px;">Inquire About Artwork</div>
-      <div id="inquiry-artwork-subtitle" style="font-size: 8.5pt; color: #666; margin-bottom: 15px;"></div>
+      <div style="font-family: 'Cinzel', serif; font-size: 10.5pt; font-weight: bold; margin-bottom: 4px;">Inquire About Artwork</div>
+      <div id="inquiry-artwork-subtitle" style="font-size: 8pt; color: #666; margin-bottom: 12px;"></div>
       <form onsubmit="submitInquiry(event)" style="display: flex; flex-direction: column; gap: 10px;">
         <input type="hidden" id="inquiry-art-id">
         <div>
-          <label style="font-size: 8pt; font-weight: 600; display: block; margin-bottom: 3px;">Your Full Name</label>
-          <input type="text" id="inquiry-name" class="form-control" required style="width: 100%;">
+          <label style="font-size: 7.5pt; font-weight: 600; display: block; margin-bottom: 2px;">Your Full Name</label>
+          <input type="text" id="inquiry-name" class="form-control" required>
         </div>
         <div>
-          <label style="font-size: 8pt; font-weight: 600; display: block; margin-bottom: 3px;">Email Address / Phone</label>
-          <input type="text" id="inquiry-contact" class="form-control" required style="width: 100%;">
+          <label style="font-size: 7.5pt; font-weight: 600; display: block; margin-bottom: 2px;">Email Address / Phone</label>
+          <input type="text" id="inquiry-contact" class="form-control" required>
         </div>
         <div>
-          <label style="font-size: 8pt; font-weight: 600; display: block; margin-bottom: 3px;">Message / Offer Details</label>
-          <textarea id="inquiry-message" rows="3" class="form-control" placeholder="I am interested in acquiring this piece..." required style="width: 100%; font-family: inherit;"></textarea>
+          <label style="font-size: 7.5pt; font-weight: 600; display: block; margin-bottom: 2px;">Message / Offer Details</label>
+          <textarea id="inquiry-message" rows="3" class="form-control" placeholder="I am interested in acquiring this piece..." required style="font-family: inherit;"></textarea>
         </div>
-        <div style="display: flex; gap: 10px; margin-top: 5px;">
-          <button type="submit" style="background: var(--accent-color, #c5a059); color: #fff; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 600; cursor: pointer; flex: 1;">Send Inquiry</button>
-          <button type="button" onclick="closeInquiryModal()" style="background: #e0e0e0; color: #333; border: none; padding: 10px 15px; border-radius: 4px; font-weight: 600; cursor: pointer;">Cancel</button>
+        <div style="display: flex; gap: 8px; margin-top: 5px;">
+          <button type="submit" style="background: var(--accent-color, #c5a059); color: #fff; border: none; padding: 9px; border-radius: 3px; font-weight: 600; cursor: pointer; flex: 1; font-size: 8pt;">Send Inquiry</button>
+          <button type="button" onclick="closeInquiryModal()" style="background: #e0e0e0; color: #333; border: none; padding: 9px 12px; border-radius: 3px; font-weight: 600; cursor: pointer; font-size: 8pt;">Cancel</button>
         </div>
       </form>
     </div>
@@ -309,21 +341,19 @@
   <div id="toast"></div>
 
   <script>
-    
     const SUPABASE_URL = 'https://vuifcweuslilgxsggsei.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_jm_dvdw_BGDNfkzKPniO6A_Em0EgOun';
     
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let allArtworksCache = [];
     let currentFilteredCache = [];
-    let currentLightboxArt = null;
+    let currentLightboxIndex = 0;
     let artistContactEmail = "";
 
-    // Approximate conversion rates relative to EGP
     const exchangeRates = {
       EGP: { rate: 1, symbol: 'EGP' },
-      USD: { rate: 0.020, symbol: '$' },  // Approximate baseline rate
-      EUR: { rate: 0.019, symbol: '€' }   // Approximate baseline rate
+      USD: { rate: 0.020, symbol: '$' },
+      EUR: { rate: 0.019, symbol: '€' }
     };
 
     window.addEventListener('DOMContentLoaded', async () => {
@@ -342,56 +372,35 @@
             document.getElementById('header-artist-name').innerText = config.Artist_Name;
             document.getElementById('bio-title').innerText = `About ${config.Artist_Name}`;
           }
-          if (config.Artist_Statement) {
-            document.getElementById('artist-statement').innerText = config.Artist_Statement;
-          }
-          if (config.Artist_Bio) {
-            document.getElementById('artist-bio').innerText = config.Artist_Bio;
-          }
+          if (config.Artist_Statement) document.getElementById('artist-statement').innerText = config.Artist_Statement;
+          if (config.Artist_Bio) document.getElementById('artist-bio').innerText = config.Artist_Bio;
           if (config.Contact_Email) {
             artistContactEmail = config.Contact_Email;
             document.getElementById('contact-email').innerText = config.Contact_Email;
           }
-          if (config.Contact_Phone) {
-            document.getElementById('contact-phone').innerText = config.Contact_Phone;
-          }
+          if (config.Contact_Phone) document.getElementById('contact-phone').innerText = config.Contact_Phone;
         }
-      } catch (err) {
-        console.error("Error loading branding config:", err);
-      }
+      } catch (err) { console.error(err); }
     }
 
     async function fetchAllArtworks() {
-      const countBadge = document.getElementById('artwork-count-badge');
       try {
         const { data, error } = await supabaseClient.from('artworks').select('*').order('artwork_id', { ascending: true });
-        
-        if (error) {
-          countBadge.innerText = "Error loading database records: " + error.message;
-          return;
-        }
-
+        if (error) { document.getElementById('artwork-count-badge').innerText = "Error loading records."; return; }
         allArtworksCache = data || [];
         populateDropdowns(allArtworksCache);
         loadArtworks();
-      } catch (err) {
-        countBadge.innerText = "Failed to connect to database.";
-      }
+      } catch (err) { document.getElementById('artwork-count-badge').innerText = "Failed to connect."; }
     }
 
     function populateDropdowns(artworks) {
-      const phases = new Set();
-      const mediums = new Set();
-      const statuses = new Set();
-      const years = new Set();
-
+      const phases = new Set(), mediums = new Set(), statuses = new Set(), years = new Set();
       artworks.forEach(art => {
         if (art.phase_collection) phases.add(String(art.phase_collection).trim());
         if (art.medium) mediums.add(String(art.medium).trim());
         if (art.status) statuses.add(String(art.status).trim());
         if (art.year) years.add(String(art.year).trim());
       });
-
       fillSelect('filter-phase', Array.from(phases).sort(), 'All Collections');
       fillSelect('filter-medium', Array.from(mediums).sort(), 'All Mediums');
       fillSelect('filter-status', Array.from(statuses).sort(), 'All Statuses');
@@ -400,15 +409,14 @@
 
     function fillSelect(elemId, list, defaultLabel) {
       const sel = document.getElementById(elemId);
-      const currentVal = sel.value;
+      const val = sel.value;
       sel.innerHTML = `<option value="ALL">${defaultLabel}</option>`;
       list.forEach(item => {
         const opt = document.createElement('option');
-        opt.value = item;
-        opt.innerText = item;
+        opt.value = item; opt.innerText = item;
         sel.appendChild(opt);
       });
-      sel.value = currentVal || 'ALL';
+      sel.value = val || 'ALL';
     }
 
     function loadArtworks() {
@@ -424,25 +432,17 @@
         if (fYear !== 'ALL' && String(art.year || '').trim() !== fYear) return false;
         return true;
       });
-
       renderGrid(currentFilteredCache);
     }
 
-    function changeCurrency() {
-      renderGrid(currentFilteredCache);
-    }
+    function changeCurrency() { renderGrid(currentFilteredCache); }
 
     function formatPrice(priceVal, statusVal) {
       if (!priceVal || priceVal <= 0) return statusVal || 'POA';
       const curKey = document.getElementById('currency-selector').value || 'EGP';
       const config = exchangeRates[curKey] || exchangeRates['EGP'];
       const converted = parseFloat(priceVal) * config.rate;
-
-      if (curKey === 'EGP') {
-        return `${converted.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} EGP`;
-      } else {
-        return `${config.symbol}${converted.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${curKey}`;
-      }
+      return curKey === 'EGP' ? `${converted.toLocaleString('en-US', {maximumFractionDigits: 0})} EGP` : `${config.symbol}${converted.toLocaleString('en-US', {maximumFractionDigits: 0})} ${curKey}`;
     }
 
     function renderGrid(artworks) {
@@ -452,25 +452,21 @@
       countBadge.innerText = `Showing ${artworks.length} artwork(s)`;
 
       if (!artworks || artworks.length === 0) {
-        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #888;">No artworks found matching criteria.</div>`;
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 30px; color: #888;">No artworks found matching criteria.</div>`;
         return;
       }
 
-      artworks.forEach(art => {
+      artworks.forEach((art, index) => {
         const card = document.createElement('div');
         card.className = 'artwork-card';
-
-        const displayPrice = formatPrice(art.price, art.status);
-        const imgUrl = art.image_url || 'https://via.placeholder.com/300x200?text=No+Image';
-
         card.innerHTML = `
           <div class="phase-tag">${art.phase_collection || 'Unassigned'}</div>
-          <img src="${imgUrl}" class="artwork-thumb" alt="${art.title}" onclick='openLightbox(${JSON.stringify(art)})' />
+          <img src="${art.image_url || 'https://via.placeholder.com/300x200?text=No+Image'}" class="artwork-thumb" loading="lazy" alt="${art.title}" onclick='openLightbox(${index})' />
           <div class="artwork-info">
             <div class="artwork-card-title">${art.title || 'Untitled'}</div>
             <div class="artwork-card-meta">${art.medium || 'Unspecified'}</div>
             <div class="artwork-card-meta">${art.height_cm || 0} × ${art.width_cm || 0} cm</div>
-            <div class="artwork-card-price">${displayPrice}</div>
+            <div class="artwork-card-price">${formatPrice(art.price, art.status)}</div>
             <button onclick='openInquiryModal(${JSON.stringify(art)})' class="inquire-btn">Inquire About Piece</button>
           </div>
         `;
@@ -478,8 +474,15 @@
       });
     }
 
-    function openLightbox(art) {
-      currentLightboxArt = art;
+    function openLightbox(index) {
+      currentLightboxIndex = index;
+      updateLightboxContent();
+      document.getElementById('lightbox-modal').style.display = 'flex';
+    }
+
+    function updateLightboxContent() {
+      const art = currentFilteredCache[currentLightboxIndex];
+      if (!art) return;
       document.getElementById('lightbox-img').src = art.image_url || '';
       document.getElementById('lightbox-phase').innerText = art.phase_collection || 'Unassigned';
       document.getElementById('lightbox-title').innerText = art.title || 'Untitled';
@@ -488,21 +491,22 @@
       document.getElementById('lightbox-dims').innerText = `${art.height_cm || 0} × ${art.width_cm || 0} cm (${art.height_inches || 0} × ${art.width_inches || 0} in)`;
       document.getElementById('lightbox-status').innerText = art.status || 'Available';
       document.getElementById('lightbox-price').innerText = formatPrice(art.price, art.status);
-      
-      document.getElementById('lightbox-modal').style.display = 'flex';
+    }
+
+    function navigateLightbox(direction) {
+      currentLightboxIndex += direction;
+      if (currentLightboxIndex < 0) currentLightboxIndex = currentFilteredCache.length - 1;
+      if (currentLightboxIndex >= currentFilteredCache.length) currentLightboxIndex = 0;
+      updateLightboxContent();
     }
 
     function closeLightbox(e) {
-      if (e.target.id === 'lightbox-modal') {
-        document.getElementById('lightbox-modal').style.display = 'none';
-      }
+      if (e.target.id === 'lightbox-modal') document.getElementById('lightbox-modal').style.display = 'none';
     }
 
     function openInquiryFromLightbox() {
       document.getElementById('lightbox-modal').style.display = 'none';
-      if (currentLightboxArt) {
-        openInquiryModal(currentLightboxArt);
-      }
+      openInquiryModal(currentFilteredCache[currentLightboxIndex]);
     }
 
     function openInquiryModal(art) {
@@ -511,9 +515,7 @@
       document.getElementById('inquiry-modal').style.display = 'flex';
     }
 
-    function closeInquiryModal() {
-      document.getElementById('inquiry-modal').style.display = 'none';
-    }
+    function closeInquiryModal() { document.getElementById('inquiry-modal').style.display = 'none'; }
 
     function submitInquiry(e) {
       e.preventDefault();
@@ -521,14 +523,11 @@
       const name = document.getElementById('inquiry-name').value;
       const contact = document.getElementById('inquiry-contact').value;
       const message = document.getElementById('inquiry-message').value;
-
       const subject = encodeURIComponent(`Artwork Inquiry: ${artId}`);
       const body = encodeURIComponent(`Name: ${name}\nContact: ${contact}\nArtwork Reference: ${artId}\n\nMessage:\n${message}`);
-      
       window.location.href = `mailto:${artistContactEmail || 'artist@portfolio.com'}?subject=${subject}&body=${body}`;
-      
       closeInquiryModal();
-      showToast("Inquiry opened in your email client!");
+      showToast("Inquiry opened in email client!");
     }
 
     function showToast(msg) {
