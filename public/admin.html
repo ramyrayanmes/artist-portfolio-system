@@ -176,8 +176,9 @@
         <!-- Inventory Management & Reports -->
         <div class="inventory-container">
           
-          <div class="export-bar">
-            <span style="font-size: 8pt; font-weight: 600; color: #444;">Legacy Reports:</span>
+          <div class="export-bar" style="gap: 15px; align-items: center;">
+            <span style="font-size: 8pt; font-weight: 600; color: #444;">Legacy Reports & Options:</span>
+            <label style="font-size: 8pt; cursor:pointer;"><input type="checkbox" id="hide-prices-chk"> Hide Prices in Catalogs</label>
             <button onclick="exportLegacyCatalogPDF('catalog')" class="btn-action btn-pdf">Detailed Catalog PDF</button>
             <button onclick="exportLegacyCatalogPDF('grid')" class="btn-action btn-pdf">Grid Catalog PDF</button>
             <button onclick="generateTestCOAPDF()" class="btn-action" style="background: #333; color:#fff;">Test COA</button>
@@ -310,7 +311,7 @@
   <div id="toast"></div>
 
   <script>
-    const SUPABASE_URL = 'https://vuifcweuslilgxsggsei.supabase.co';
+    const SUPABASE_URL = 'URL=https://vuifcweuslilgxsggsei.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_jm_dvdw_BGDNfkzKPniO6A_Em0EgOun';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const HMAC_SECRET = "ArtistPortfolioSecretKey2026";
@@ -496,7 +497,7 @@
           <style>
             @page { size: A4 portrait; margin: 0; }
             body { font-family: 'Georgia', serif; margin: 0; padding: 0; background: #ffffff; color: #1a1a1a; }
-            .page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 15mm; border: 12px solid ${aColor}; position: relative; }
+            .page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 15mm 14mm 15mm 16mm; border: 12px solid ${aColor}; position: relative; overflow: hidden; page-break-after: avoid; break-after: avoid; }
             .inner-border { border: 2px solid #1a1a1a; height: 100%; box-sizing: border-box; padding: 10mm; text-align: center; display: flex; flex-direction: column; align-items: center; }
             .header { font-size: 22pt; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 3px; }
             .subheader { font-size: 10pt; letter-spacing: 1px; color: ${aColor}; text-transform: uppercase; margin-bottom: 15px; }
@@ -562,7 +563,7 @@
         width_inches: 19.7,
         status: "Available",
         price: 25000,
-        image_url: ""
+        image_url: "https://vuifcweuslilgxsggsei.supabase.co/storage/v1/object/public/artworks-bucket/reem-shakweer.png"
       };
       generateCOAPDF(testArt);
     }
@@ -744,11 +745,14 @@
       
       const artistName = activeBrandingConfig.Artist_Name || "Reem Shakweer";
       const aColor = activeBrandingConfig.Accent_Color || "#c5a059";
+      const contactEmail = activeBrandingConfig.Contact_Email || "";
+      const contactPhone = activeBrandingConfig.Contact_Phone || "";
+      const hidePrices = document.getElementById('hide-prices-chk').checked;
 
       const processedArtworks = [];
       for (const art of currentFilteredArtworks) {
         const b64 = await getBase64FromImageUrl(art.image_url);
-        const displayPrice = art.price ? `${parseFloat(art.price).toLocaleString()} EGP` : (art.status || 'POA');
+        const displayPrice = hidePrices ? "" : (art.price ? `${parseFloat(art.price).toLocaleString()} EGP` : (art.status || 'POA'));
         processedArtworks.push({ ...art, base64Img: b64, displayPrice });
       }
 
@@ -758,7 +762,7 @@
         let pagesHtml = processedArtworks.map((art, index) => {
           const imgH = art.base64Img ? `<img src="${art.base64Img}" class="artwork-img" />` : '<div class="no-img">Image Not Available</div>';
           return `
-            <div class="page ${index < processedArtworks.length - 1 ? 'page-break' : ''}">
+            <div class="page">
               <div class="header">
                 <div class="artist">${artistName}</div>
                 <div class="collection-badge">${art.phase_collection || 'Collection'}</div>
@@ -771,9 +775,9 @@
                 <div class="meta-row"><strong>Medium:</strong> ${art.medium || 'N/A'}</div>
                 <div class="meta-row"><strong>Dimensions:</strong> ${art.height_inches || 0} × ${art.width_inches || 0} in (${art.height_cm || 0} × ${art.width_cm || 0} cm)</div>
                 <div class="meta-row"><strong>Status:</strong> ${art.status}</div>
-                <div class="price">${art.displayPrice}</div>
+                ${!hidePrices && art.displayPrice ? `<div class="price">${art.displayPrice}</div>` : ''}
               </div>
-              <div class="footer">Page ${index + 1} of ${processedArtworks.length}</div>
+              <div class="footer">Page ${index + 1} of ${processedArtworks.length} | Contact: ${contactEmail} ${contactPhone}</div>
             </div>
           `;
         }).join('');
@@ -785,19 +789,18 @@
             <style>
               @page { size: A4 portrait; margin: 0; }
               body { font-family: 'Georgia', serif; margin: 0; padding: 0; background: #ffffff; color: #1a1a1a; }
-              .page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 15mm; position: relative; }
-              .page-break { page-break-after: always; }
+              .page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 15mm; position: relative; page-break-after: always; break-after: page; }
               .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid ${aColor}; padding-bottom: 6px; margin-bottom: 15px; }
               .artist { font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
               .collection-badge { font-size: 8.5pt; background: ${aColor}; color: #ffffff; padding: 3px 8px; border-radius: 3px; font-family: sans-serif; }
-              .image-container { width: 100%; height: 140mm; display: flex; align-items: center; justify-content: center; background: #fafafa; margin-bottom: 15px; border: 1px solid #eee; }
-              .artwork-img { max-width: 100%; max-height: 140mm; object-fit: contain; }
+              .image-container { width: 100%; height: 135mm; display: flex; align-items: center; justify-content: center; background: #fafafa; margin-bottom: 15px; border: 1px solid #eee; }
+              .artwork-img { max-width: 100%; max-height: 135mm; object-fit: contain; }
               .no-img { color: #888; font-family: sans-serif; font-size: 9pt; }
               .details { border-left: 2px solid ${aColor}; padding-left: 12px; }
               .title { font-size: 16pt; margin: 0 0 8px 0; }
               .meta-row { font-size: 9.5pt; margin-bottom: 3px; font-family: sans-serif; color: #444; }
               .price { font-size: 13pt; font-weight: bold; color: ${aColor}; margin-top: 8px; font-family: sans-serif; }
-              .footer { position: absolute; bottom: 10mm; right: 15mm; font-size: 8pt; color: #888; font-family: sans-serif; }
+              .footer { position: absolute; bottom: 10mm; left: 15mm; right: 15mm; display: flex; justify-content: space-between; font-size: 8pt; color: #888; font-family: sans-serif; }
             </style>
           </head>
           <body>${pagesHtml}</body>
@@ -820,18 +823,18 @@
                 <div class="card-badge">${art.phase_collection || 'Collection'}</div>
                 <div class="card-meta">${art.medium || 'N/A'}</div>
                 <div class="card-meta">${art.height_inches || 0} × ${art.width_inches || 0} in</div>
-                <div class="card-price">${art.displayPrice}</div>
+                ${!hidePrices && art.displayPrice ? `<div class="card-price">${art.displayPrice}</div>` : ''}
               </div>
             `;
           }).join('');
 
           return `
-            <div class="page ${pageIdx < pages.length - 1 ? 'page-break' : ''}">
+            <div class="page">
               <div class="header">
                 <div class="artist">${artistName} — Collection Overview</div>
               </div>
               <div class="grid-container">${gridCards}</div>
-              <div class="footer">Page ${pageIdx + 1} of ${pages.length}</div>
+              <div class="footer">Page ${pageIdx + 1} of ${pages.length} | Contact: ${contactEmail} ${contactPhone}</div>
             </div>
           `;
         }).join('');
@@ -843,20 +846,19 @@
             <style>
               @page { size: A4 portrait; margin: 0; }
               body { font-family: 'Georgia', serif; margin: 0; padding: 0; background: #ffffff; color: #1a1a1a; }
-              .page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 15mm; position: relative; }
-              .page-break { page-break-after: always; }
-              .header { border-bottom: 1px solid ${aColor}; padding-bottom: 8px; margin-bottom: 10mm; }
+              .page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 15mm; position: relative; page-break-after: always; break-after: page; }
+              .header { border-bottom: 1px solid ${aColor}; padding-bottom: 8px; margin-bottom: 8mm; }
               .artist { font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-              .grid-container { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 75mm); gap: 8mm; }
-              .grid-card { border: 1px solid #e0e0e0; padding: 8px; box-sizing: border-box; display: flex; flex-direction: column; background: #fafafa; }
-              .img-box { width: 100%; height: 38mm; display: flex; align-items: center; justify-content: center; background: #ffffff; margin-bottom: 5px; }
-              .grid-img { max-width: 100%; max-height: 38mm; object-fit: contain; }
+              .grid-container { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 72mm); gap: 6mm; }
+              .grid-card { border: 1px solid #e0e0e0; padding: 8px; box-sizing: border-box; display: flex; flex-direction: column; background: #ffffff; }
+              .img-box { width: 100%; height: 35mm; display: flex; align-items: center; justify-content: center; background: #ffffff; margin-bottom: 4px; }
+              .grid-img { max-width: 100%; max-height: 35mm; object-fit: contain; }
               .no-img { font-size: 8pt; color: #aaa; font-family: sans-serif; }
-              .card-title { font-size: 9.5pt; font-weight: bold; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+              .card-title { font-size: 9pt; font-weight: bold; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
               .card-badge { font-size: 6.5pt; font-family: sans-serif; color: ${aColor}; font-weight: bold; text-transform: uppercase; }
               .card-meta { font-size: 7.5pt; color: #555; font-family: sans-serif; }
               .card-price { font-size: 8.5pt; font-weight: bold; color: ${aColor}; margin-top: auto; font-family: sans-serif; }
-              .footer { position: absolute; bottom: 10mm; right: 15mm; font-size: 8pt; color: #888; font-family: sans-serif; }
+              .footer { position: absolute; bottom: 10mm; left: 15mm; right: 15mm; display: flex; justify-content: space-between; font-size: 8pt; color: #888; font-family: sans-serif; }
             </style>
           </head>
           <body>${htmlPages}</body>
