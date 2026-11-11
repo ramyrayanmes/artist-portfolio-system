@@ -6,8 +6,10 @@
   <title>Admin Dashboard - Artist Portfolio</title>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- html2pdf bundle (includes jsPDF and html2canvas) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <!-- QR Code Generator Library -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
   <style>
@@ -126,12 +128,12 @@
             </div>
             <div>
               <label style="font-size: 7.5pt; font-weight: 600; display: block; margin-bottom: 2px;">Collection / Phase</label>
-              <input type="text" id="new-phase" class="form-control" placeholder="e.g. Phase I">
+              <input type="text" id="new-phase" class="form-control" placeholder="e.g. Phase II">
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
               <div>
                 <label style="font-size: 7.5pt; font-weight: 600; display: block; margin-bottom: 2px;">Medium</label>
-                <input type="text" id="new-medium" class="form-control" placeholder="Oil on Canvas">
+                <input type="text" id="new-medium" class="form-control" placeholder="Acrylic on canvas">
               </div>
               <div>
                 <label style="font-size: 7.5pt; font-weight: 600; display: block; margin-bottom: 2px;">Year</label>
@@ -175,10 +177,10 @@
         <div class="inventory-container">
           
           <div class="export-bar">
-            <span style="font-size: 8pt; font-weight: 600; color: #444;">Reports & Testing:</span>
+            <span style="font-size: 8pt; font-weight: 600; color: #444;">Legacy Reports:</span>
             <button onclick="exportLegacyCatalogPDF('catalog')" class="btn-action btn-pdf">Detailed Catalog PDF</button>
             <button onclick="exportLegacyCatalogPDF('grid')" class="btn-action btn-pdf">Grid Catalog PDF</button>
-            <button onclick="generateTestCOAPDF()" class="btn-action" style="background: #333; color:#fff;">Generate Test COA</button>
+            <button onclick="generateTestCOAPDF()" class="btn-action" style="background: #333; color:#fff;">Test COA</button>
           </div>
 
           <div class="filter-bar-admin">
@@ -202,7 +204,7 @@
         <form onsubmit="handleSaveBranding(event)" style="display: flex; flex-direction: column; gap: 12px;">
           <div>
             <label style="font-size: 8pt; font-weight: 600; display: block; margin-bottom: 3px;">Website Domain (for COA QR verification)</label>
-            <input type="text" id="brand-website-domain" class="form-control" placeholder="https://yourportfolio.pages.dev" required>
+            <input type="text" id="brand-website-domain" class="form-control" placeholder="https://artist-portfolio-system.ramy-rayan.workers.dev/" required>
             <small style="color: #666; font-size: 7.5pt;">Used to generate verifiable QR codes on your Certificates of Authenticity.</small>
           </div>
           <div>
@@ -442,6 +444,22 @@
       });
     }
 
+    async function getBase64FromImageUrl(url) {
+      if (!url) return null;
+      try {
+        const response = await fetch(url, { mode: 'cors' });
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.error("Image fetch failed for PDF embedding:", e);
+        return null;
+      }
+    }
+
     async function computeHMAC(message) {
       const msgUint8 = new TextEncoder().encode(message);
       const keyUint8 = new TextEncoder().encode(HMAC_SECRET);
@@ -451,124 +469,102 @@
     }
 
     async function generateCOAPDF(art) {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const artistName = activeBrandingConfig.Artist_Name || 'Artist';
-      const domain = activeBrandingConfig.Website_Domain || window.location.origin;
-
-      doc.setLineWidth(1);
-      doc.rect(12, 12, 186, 273);
-      doc.setLineWidth(0.3);
-      doc.rect(15, 15, 180, 267);
-
-      doc.setFont("Times", "bold");
-      doc.setFontSize(24);
-      doc.text("CERTIFICATE OF AUTHENTICITY", 105, 35, { align: "center" });
-
-      doc.setFont("Times", "italic");
-      doc.setFontSize(12);
-      doc.text("Official Provenance Document", 105, 43, { align: "center" });
-
-      doc.setFont("Times", "normal");
-      doc.setFontSize(10.5);
-      doc.text(`This document certifies that the artwork detailed below is an authentic original work created by ${artistName}.`, 105, 55, { align: "center" });
-
-      // Add image if available
-      if (art.image_url) {
-        try {
-          // Convert image URL to base64 via canvas for jsPDF embedding
-          const imgData = await getBase64FromImageUrl(art.image_url);
-          doc.addImage(imgData, 'WEBP', 65, 62, 80, 70);
-        } catch (e) {
-          console.error("Could not embed image in PDF", e);
-        }
-      }
-
-      const startY = 140;
-      doc.setFont("Times", "bold");
-      doc.setFontSize(12);
-      doc.text("Artwork ID:", 25, startY);
-      doc.setFont("Times", "normal");
-      doc.text(String(art.artwork_id || ''), 75, startY);
-
-      doc.setFont("Times", "bold");
-      doc.text("Title:", 25, startY + 10);
-      doc.setFont("Times", "normal");
-      doc.text(String(art.title || 'Untitled'), 75, startY + 10);
-
-      doc.setFont("Times", "bold");
-      doc.text("Collection / Series:", 25, startY + 20);
-      doc.setFont("Times", "normal");
-      doc.text(String(art.phase_collection || 'N/A'), 75, startY + 20);
-
-      doc.setFont("Times", "bold");
-      doc.text("Medium & Support:", 25, startY + 30);
-      doc.setFont("Times", "normal");
-      doc.text(String(art.medium || 'N/A'), 75, startY + 30);
-
-      doc.setFont("Times", "bold");
-      doc.text("Dimensions:", 25, startY + 40);
-      doc.setFont("Times", "normal");
-      doc.text(`${art.height_cm || 0} x ${art.width_cm || 0} cm (${art.height_inches || 0} x ${art.width_inches || 0} in)`, 75, startY + 40);
-
-      // Generate Verification QR Code
+      showToast("Generating Certificate of Authenticity...");
+      const artistName = activeBrandingConfig.Artist_Name || "Reem Shakweer";
+      const aColor = activeBrandingConfig.Accent_Color || "#c5a059";
+      const domain = activeBrandingConfig.Website_Domain || "https://artist-portfolio-system.ramy-rayan.workers.dev/";
+      const base64Img = await getBase64FromImageUrl(art.image_url);
+      
       const sig = await computeHMAC(`${art.artwork_id}|${art.title}`);
       const verifyUrl = `${domain.replace(/\/$/, '')}/verify.html?id=${art.artwork_id}&sig=${sig}`;
       
+      let qrBase64 = "";
       try {
         const qr = qrcode(0, 'M');
         qr.addData(verifyUrl);
         qr.make();
-        const qrBase64 = qr.createDataURL(4, 0);
-        doc.addImage(qrBase64, 'PNG', 25, 205, 30, 30);
-        doc.setFontSize(7.5);
-        doc.text("Scan to Verify", 40, 240, { align: "center" });
-      } catch (e) {
-        console.error("QR generation failed", e);
-      }
+        qrBase64 = qr.createDataURL(4, 0);
+      } catch (e) { console.error("QR generation failed", e); }
 
-      // Signature block
-      doc.line(115, 225, 180, 225);
-      doc.setFont("Times", "bold");
-      doc.setFontSize(11);
-      doc.text(artistName, 147.5, 232, { align: "center" });
-      doc.setFontSize(9);
-      doc.text("Artist Signature", 147.5, 238, { align: "center" });
-      doc.text(`Date: ${new Date().toLocaleDateString()}`, 75, 232);
+      const imgHtml = base64Img ? `<img src="${base64Img}" class="coa-img" />` : '<div class="no-img">Image Not Available</div>';
+      const qrHtml = qrBase64 ? `<img src="${qrBase64}" style="width:25mm;height:25mm;" /><div style="font-size:7pt;margin-top:2px;font-family:sans-serif;">Scan to Verify</div>` : '';
 
-      doc.save(`COA_${art.artwork_id}.pdf`);
-      showToast("COA PDF with QR Verification generated!");
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            @page { size: A4 portrait; margin: 0; }
+            body { font-family: 'Georgia', serif; margin: 0; padding: 0; background: #ffffff; color: #1a1a1a; }
+            .page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 15mm; border: 12px solid ${aColor}; position: relative; }
+            .inner-border { border: 2px solid #1a1a1a; height: 100%; box-sizing: border-box; padding: 10mm; text-align: center; display: flex; flex-direction: column; align-items: center; }
+            .header { font-size: 22pt; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 3px; }
+            .subheader { font-size: 10pt; letter-spacing: 1px; color: ${aColor}; text-transform: uppercase; margin-bottom: 15px; }
+            .cert-text { font-size: 9.5pt; line-height: 1.5; max-width: 140mm; margin-bottom: 15px; font-family: sans-serif; }
+            .img-box { width: 100%; height: 75mm; display: flex; align-items: center; justify-content: center; margin-bottom: 15px; }
+            .coa-img { max-width: 100%; max-height: 75mm; object-fit: contain; }
+            .no-img { font-size: 9pt; color: #aaa; font-family: sans-serif; }
+            .details-box { width: 100%; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 10px 0; margin-bottom: 20px; font-family: sans-serif; text-align: left; padding-left: 20px; }
+            .title { font-size: 15pt; font-family: 'Georgia', serif; font-weight: bold; margin-bottom: 5px; }
+            .meta { font-size: 9pt; color: #444; margin-bottom: 3px; }
+            .footer-row { width: 100%; display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; }
+            .sig-block { width: 50mm; border-top: 1px solid #1a1a1a; font-size: 8pt; font-family: sans-serif; padding-top: 4px; color: #555; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="page">
+            <div class="inner-border">
+              <div class="header">Certificate of Authenticity</div>
+              <div class="subheader">Official Provenance Document</div>
+              <div class="cert-text">
+                This document certifies that the artwork detailed below is an authentic, original work created by <strong>${artistName}</strong>.
+              </div>
+              <div class="img-box">${imgHtml}</div>
+              <div class="details-box">
+                <div class="title">${art.title || 'Untitled'}</div>
+                <div class="meta"><strong>Collection:</strong> ${art.phase_collection || 'N/A'} | <strong>Year:</strong> ${art.year || 'N/A'}</div>
+                <div class="meta"><strong>Medium:</strong> ${art.medium || 'N/A'}</div>
+                <div class="meta"><strong>Dimensions:</strong> ${art.height_inches || 0} × ${art.width_inches || 0} in (${art.height_cm || 0} × ${art.width_cm || 0} cm)</div>
+                <div class="meta"><strong>Artwork ID:</strong> ${art.artwork_id}</div>
+              </div>
+              <div class="footer-row">
+                <div style="text-align: left;">${qrHtml}</div>
+                <div class="sig-block">Artist / Gallery Signature</div>
+                <div class="sig-block">Date: ${new Date().toLocaleDateString()}</div>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const element = document.createElement('div');
+      element.innerHTML = htmlContent;
+      html2pdf().from(element).set({
+        margin: 0,
+        filename: `COA_${art.artwork_id}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).save();
     }
 
     function generateTestCOAPDF() {
       const testArt = {
         artwork_id: "TEST-999",
         title: "Study in Light and Shadow (Test)",
-        phase_collection: "Test Series",
-        medium: "Oil on Canvas",
+        phase_collection: "Phase II",
+        medium: "Acrylic on canvas",
+        year: 2026,
         height_cm: 50,
-        width_cm: 40,
+        width_cm: 50,
         height_inches: 19.7,
-        width_inches: 15.7,
+        width_inches: 19.7,
+        status: "Available",
+        price: 25000,
         image_url: ""
       };
       generateCOAPDF(testArt);
-    }
-
-    function getBase64FromImageUrl(url) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width; canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL('image/webp'));
-        };
-        img.onerror = reject;
-        img.src = url;
-      });
     }
 
     async function compressImageFile(file, maxWidth = 1600, quality = 0.85) {
@@ -688,7 +684,7 @@
       const { data } = await supabaseClient.from('branding_config').select('*');
       if (data) {
         data.forEach(item => activeBrandingConfig[item.key] = item.value);
-        document.getElementById('brand-website-domain').value = activeBrandingConfig.Website_Domain || window.location.origin;
+        document.getElementById('brand-website-domain').value = activeBrandingConfig.Website_Domain || "https://artist-portfolio-system.ramy-rayan.workers.dev/";
         document.getElementById('brand-artist-name').value = activeBrandingConfig.Artist_Name || '';
         document.getElementById('brand-artist-statement').value = activeBrandingConfig.Artist_Statement || '';
         document.getElementById('brand-artist-bio').value = activeBrandingConfig.Artist_Bio || '';
@@ -720,17 +716,14 @@
 
       let log = "";
       try {
-        // Test 1: Database Read
         const { data, error } = await supabaseClient.from('artworks').select('artwork_id').limit(1);
         if (error) throw new Error("Database read failed: " + error.message);
         log += " [PASS] Supabase DB connection & query\n";
 
-        // Test 2: Branding Read
         const { data: bData, error: bErr } = await supabaseClient.from('branding_config').select('key').limit(1);
         if (bErr) throw new Error("Branding read failed: " + bErr.message);
         log += " [PASS] Branding config table read\n";
 
-        // Test 3: HMAC Cryptography
         const testHash = await computeHMAC("TEST|Artwork");
         if (!testHash || testHash.length !== 64) throw new Error("HMAC generation failed");
         log += " [PASS] Cryptographic HMAC-SHA256 generation\n";
@@ -742,42 +735,145 @@
       resultsDiv.innerText = log;
     }
 
-    function exportLegacyCatalogPDF(type) {
+    async function exportLegacyCatalogPDF(type) {
       if (!currentFilteredArtworks || currentFilteredArtworks.length === 0) {
-        showToast("No items available to export.");
+        showToast("No artworks available to export.");
         return;
       }
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const artistName = activeBrandingConfig.Artist_Name || 'Artist Catalog';
+      showToast("Generating PDF catalog...");
+      
+      const artistName = activeBrandingConfig.Artist_Name || "Reem Shakweer";
+      const aColor = activeBrandingConfig.Accent_Color || "#c5a059";
 
-      doc.setFont("Times", "bold");
-      doc.setFontSize(18);
-      doc.text(`${artistName.toUpperCase()} — INVENTORY CATALOG`, 15, 20);
-      doc.setFont("Times", "normal");
-      doc.setFontSize(10);
-      doc.text(`Generated: ${new Date().toLocaleDateString()} | Total Works: ${currentFilteredArtworks.length}`, 15, 27);
-      doc.setLineWidth(0.4);
-      doc.line(15, 31, 195, 31);
+      const processedArtworks = [];
+      for (const art of currentFilteredArtworks) {
+        const b64 = await getBase64FromImageUrl(art.image_url);
+        const displayPrice = art.price ? `${parseFloat(art.price).toLocaleString()} EGP` : (art.status || 'POA');
+        processedArtworks.push({ ...art, base64Img: b64, displayPrice });
+      }
 
-      let yPos = 40;
-      currentFilteredArtworks.forEach((art, idx) => {
-        if (yPos > 255) { doc.addPage(); yPos = 25; }
-        doc.setFont("Times", "bold");
-        doc.setFontSize(11);
-        doc.text(`${idx + 1}. ${art.title || 'Untitled'} [Ref: ${art.artwork_id}]`, 15, yPos);
-        doc.setFont("Times", "normal");
-        doc.setFontSize(9.5);
-        const priceStr = art.price ? `${parseFloat(art.price).toLocaleString()} EGP` : art.status;
-        doc.text(`Collection: ${art.phase_collection || 'N/A'}  |  Medium: ${art.medium || 'N/A'}  |  Year: ${art.year || 'N/A'}`, 15, yPos + 6);
-        doc.text(`Dimensions: ${art.height_cm || 0} x ${art.width_cm || 0} cm  |  Status: ${art.status}  |  Price: ${priceStr}`, 15, yPos + 12);
-        doc.setDrawColor(220);
-        doc.line(15, yPos + 16, 195, yPos + 16);
-        yPos += 22;
-      });
+      let htmlContent = "";
 
-      doc.save(`Artwork_Catalog_${Date.now()}.pdf`);
-      showToast("Catalog PDF generated!");
+      if (type === 'catalog') {
+        let pagesHtml = processedArtworks.map((art, index) => {
+          const imgH = art.base64Img ? `<img src="${art.base64Img}" class="artwork-img" />` : '<div class="no-img">Image Not Available</div>';
+          return `
+            <div class="page ${index < processedArtworks.length - 1 ? 'page-break' : ''}">
+              <div class="header">
+                <div class="artist">${artistName}</div>
+                <div class="collection-badge">${art.phase_collection || 'Collection'}</div>
+              </div>
+              <div class="image-container">${imgH}</div>
+              <div class="details">
+                <h1 class="title">${art.title || 'Untitled'}</h1>
+                <div class="meta-row"><strong>Artwork ID:</strong> ${art.artwork_id}</div>
+                <div class="meta-row"><strong>Year:</strong> ${art.year || 'N/A'}</div>
+                <div class="meta-row"><strong>Medium:</strong> ${art.medium || 'N/A'}</div>
+                <div class="meta-row"><strong>Dimensions:</strong> ${art.height_inches || 0} × ${art.width_inches || 0} in (${art.height_cm || 0} × ${art.width_cm || 0} cm)</div>
+                <div class="meta-row"><strong>Status:</strong> ${art.status}</div>
+                <div class="price">${art.displayPrice}</div>
+              </div>
+              <div class="footer">Page ${index + 1} of ${processedArtworks.length}</div>
+            </div>
+          `;
+        }).join('');
+
+        htmlContent = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              @page { size: A4 portrait; margin: 0; }
+              body { font-family: 'Georgia', serif; margin: 0; padding: 0; background: #ffffff; color: #1a1a1a; }
+              .page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 15mm; position: relative; }
+              .page-break { page-break-after: always; }
+              .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid ${aColor}; padding-bottom: 6px; margin-bottom: 15px; }
+              .artist { font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+              .collection-badge { font-size: 8.5pt; background: ${aColor}; color: #ffffff; padding: 3px 8px; border-radius: 3px; font-family: sans-serif; }
+              .image-container { width: 100%; height: 140mm; display: flex; align-items: center; justify-content: center; background: #fafafa; margin-bottom: 15px; border: 1px solid #eee; }
+              .artwork-img { max-width: 100%; max-height: 140mm; object-fit: contain; }
+              .no-img { color: #888; font-family: sans-serif; font-size: 9pt; }
+              .details { border-left: 2px solid ${aColor}; padding-left: 12px; }
+              .title { font-size: 16pt; margin: 0 0 8px 0; }
+              .meta-row { font-size: 9.5pt; margin-bottom: 3px; font-family: sans-serif; color: #444; }
+              .price { font-size: 13pt; font-weight: bold; color: ${aColor}; margin-top: 8px; font-family: sans-serif; }
+              .footer { position: absolute; bottom: 10mm; right: 15mm; font-size: 8pt; color: #888; font-family: sans-serif; }
+            </style>
+          </head>
+          <body>${pagesHtml}</body>
+          </html>
+        `;
+      } else {
+        const chunkSize = 6;
+        const pages = [];
+        for (let i = 0; i < processedArtworks.length; i += chunkSize) {
+          pages.push(processedArtworks.slice(i, i + chunkSize));
+        }
+
+        let htmlPages = pages.map((pageArtworks, pageIdx) => {
+          let gridCards = pageArtworks.map(art => {
+            const imgH = art.base64Img ? `<img src="${art.base64Img}" class="grid-img" />` : '<div class="no-img">No Image</div>';
+            return `
+              <div class="grid-card">
+                <div class="img-box">${imgH}</div>
+                <div class="card-title">${art.title || 'Untitled'}</div>
+                <div class="card-badge">${art.phase_collection || 'Collection'}</div>
+                <div class="card-meta">${art.medium || 'N/A'}</div>
+                <div class="card-meta">${art.height_inches || 0} × ${art.width_inches || 0} in</div>
+                <div class="card-price">${art.displayPrice}</div>
+              </div>
+            `;
+          }).join('');
+
+          return `
+            <div class="page ${pageIdx < pages.length - 1 ? 'page-break' : ''}">
+              <div class="header">
+                <div class="artist">${artistName} — Collection Overview</div>
+              </div>
+              <div class="grid-container">${gridCards}</div>
+              <div class="footer">Page ${pageIdx + 1} of ${pages.length}</div>
+            </div>
+          `;
+        }).join('');
+
+        htmlContent = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              @page { size: A4 portrait; margin: 0; }
+              body { font-family: 'Georgia', serif; margin: 0; padding: 0; background: #ffffff; color: #1a1a1a; }
+              .page { width: 210mm; height: 297mm; box-sizing: border-box; padding: 15mm; position: relative; }
+              .page-break { page-break-after: always; }
+              .header { border-bottom: 1px solid ${aColor}; padding-bottom: 8px; margin-bottom: 10mm; }
+              .artist { font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+              .grid-container { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 75mm); gap: 8mm; }
+              .grid-card { border: 1px solid #e0e0e0; padding: 8px; box-sizing: border-box; display: flex; flex-direction: column; background: #fafafa; }
+              .img-box { width: 100%; height: 38mm; display: flex; align-items: center; justify-content: center; background: #ffffff; margin-bottom: 5px; }
+              .grid-img { max-width: 100%; max-height: 38mm; object-fit: contain; }
+              .no-img { font-size: 8pt; color: #aaa; font-family: sans-serif; }
+              .card-title { font-size: 9.5pt; font-weight: bold; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+              .card-badge { font-size: 6.5pt; font-family: sans-serif; color: ${aColor}; font-weight: bold; text-transform: uppercase; }
+              .card-meta { font-size: 7.5pt; color: #555; font-family: sans-serif; }
+              .card-price { font-size: 8.5pt; font-weight: bold; color: ${aColor}; margin-top: auto; font-family: sans-serif; }
+              .footer { position: absolute; bottom: 10mm; right: 15mm; font-size: 8pt; color: #888; font-family: sans-serif; }
+            </style>
+          </head>
+          <body>${htmlPages}</body>
+          </html>
+        `;
+      }
+
+      const element = document.createElement('div');
+      element.innerHTML = htmlContent;
+      html2pdf().from(element).set({
+        margin: 0,
+        filename: `Artwork_Catalog_${Date.now()}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).save();
+      showToast("PDF catalog generated successfully!");
     }
 
     function showToast(msg) {
