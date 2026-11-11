@@ -469,6 +469,46 @@
       return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
+    // PDF helpers: render the source element in the DOM and wait for assets
+    // before html2canvas captures it. This avoids blank/partially rendered PDFs.
+    async function preparePdfElement(element) {
+      const host = document.createElement('div');
+      host.style.cssText = [
+        'position:absolute',
+        'left:-10000px',
+        'top:0',
+        'width:210mm',
+        'background:#ffffff',
+        'z-index:-1'
+      ].join(';');
+      host.appendChild(element);
+      document.body.appendChild(host);
+
+      if (document.fonts && document.fonts.ready) {
+        try { await document.fonts.ready; } catch (e) {}
+      }
+
+      const images = Array.from(element.querySelectorAll('img'));
+      await Promise.all(images.map(img => {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve;
+        });
+      }));
+
+      return host;
+    }
+
+    async function savePdfElement(element, options) {
+      const host = await preparePdfElement(element);
+      try {
+        await html2pdf().set(options).from(element).save();
+      } finally {
+        host.remove();
+      }
+    }
+
     async function generateCOAPDF(art) {
       showToast("Generating Certificate of Authenticity...");
       const artistName = activeBrandingConfig.Artist_Name || "Reem Shakweer";
@@ -478,6 +518,8 @@
       
       const sig = await computeHMAC(`${art.artwork_id}|${art.title}`);
       const verifyUrl = `${domain.replace(/\/$/, '')}/verify.html?id=${art.artwork_id}&sig=${sig}`;
+	  console.log("DOMAIN VALUE:", JSON.stringify(domain));
+	console.log("GENERATED VERIFY URL:", verifyUrl);
       
       let qrBase64 = "";
       try {
@@ -491,13 +533,10 @@
       const qrHtml = qrBase64 ? `<img src="${qrBase64}" style="width:22mm;height:22mm;" /><div style="font-size:6.5pt;margin-top:2px;font-family:sans-serif;">Scan to Verify</div>` : '';
 
       const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
           <style>
             @page { size: A4 portrait; margin: 0; }
             body { font-family: 'Georgia', serif; margin: 0; padding: 0; background: #ffffff; color: #1a1a1a; }
-            .page { width: 210mm; height: 297mm; max-height: 297mm; box-sizing: border-box; padding: 14mm; position: relative; overflow: hidden; page-break-after: avoid; break-after: avoid; }
+            .page { width: 210mm; height: 296mm; max-height: 296mm; box-sizing: border-box; padding: 14mm; position: relative; overflow: hidden; page-break-after: avoid; break-after: avoid; }
             .outer-frame { position: absolute; top: 10mm; bottom: 10mm; left: 10mm; right: 10mm; border: 10px solid ${aColor}; box-sizing: border-box; pointer-events: none; }
             .inner-container { height: 100%; box-sizing: border-box; padding: 12mm; text-align: center; display: flex; flex-direction: column; align-items: center; border: 2px solid #1a1a1a; }
             .header { font-size: 20pt; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
@@ -512,8 +551,6 @@
             .footer-row { width: 100%; display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; }
             .sig-block { width: 45mm; border-top: 1px solid #1a1a1a; font-size: 7.5pt; font-family: sans-serif; padding-top: 3px; color: #555; text-align: center; }
           </style>
-        </head>
-        <body>
           <div class="page">
             <div class="outer-frame"></div>
             <div class="inner-container">
@@ -537,19 +574,18 @@
               </div>
             </div>
           </div>
-        </body>
-        </html>
       `;
 
       const element = document.createElement('div');
       element.innerHTML = htmlContent;
-      html2pdf().from(element).set({
+      await savePdfElement(element, {
         margin: 0,
         filename: `COA_${art.artwork_id}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      }).save();
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.inner-container', '.img-box', '.details-box'] }
+      });
     }
 
     function generateTestCOAPDF() {
@@ -739,6 +775,7 @@
     }
 
     async function exportLegacyCatalogPDF(type) {
+      // Always fallback to allAdminArtworksCache if currentFilteredArtworks is unpopulated or empty
       const targetArtworks = (currentFilteredArtworks && currentFilteredArtworks.length > 0) 
         ? currentFilteredArtworks 
         : allAdminArtworksCache;
@@ -762,10 +799,10 @@
         processedArtworks.push({ ...art, base64Img: b64, displayPrice });
       }
 
-      let htmlContent = "";
+      let pagesHtmlArray = [];
 
       if (type === 'catalog') {
-        let pagesHtml = processedArtworks.map((art, index) => {
+        pagesHtmlArray = processedArtworks.map((art, index) => {
           const imgH = art.base64Img ? `<img src="${art.base64Img}" class="artwork-img" />` : '<div class="no-img">Image Not Available</div>';
           return `
             <div class="page">
@@ -786,40 +823,15 @@
               <div class="footer">Page ${index + 1} of ${processedArtworks.length} | Contact: ${contactEmail} ${contactPhone}</div>
             </div>
           `;
-        }).join('');
-
-        htmlContent = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <style>
-              @page { size: A4 portrait; margin: 0; }
-              body { font-family: 'Georgia', serif; margin: 0; padding: 0; background: #ffffff; color: #1a1a1a; }
-              .page { width: 210mm; height: 297mm; max-height: 297mm; box-sizing: border-box; padding: 12mm 15mm; position: relative; page-break-after: always; break-after: page; overflow: hidden; }
-              .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid ${aColor}; padding-bottom: 6px; margin-bottom: 12px; }
-              .artist { font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-              .collection-badge { font-size: 8.5pt; background: ${aColor}; color: #ffffff; padding: 3px 8px; border-radius: 3px; font-family: sans-serif; }
-              .image-container { width: 100%; height: 130mm; display: flex; align-items: center; justify-content: center; background: #fafafa; margin-bottom: 12px; border: 1px solid #eee; }
-              .artwork-img { max-width: 100%; max-height: 130mm; object-fit: contain; }
-              .no-img { color: #888; font-family: sans-serif; font-size: 9pt; }
-              .details { border-left: 2px solid ${aColor}; padding-left: 12px; }
-              .title { font-size: 15pt; margin: 0 0 6px 0; }
-              .meta-row { font-size: 9pt; margin-bottom: 2px; font-family: sans-serif; color: #444; }
-              .price { font-size: 12pt; font-weight: bold; color: ${aColor}; margin-top: 6px; font-family: sans-serif; }
-              .footer { position: absolute; bottom: 8mm; left: 15mm; right: 15mm; display: flex; justify-content: space-between; font-size: 8pt; color: #888; font-family: sans-serif; }
-            </style>
-          </head>
-          <body>${pagesHtml}</body>
-          </html>
-        `;
+        });
       } else {
         const chunkSize = 6;
-        const pages = [];
+        const pageGroups = [];
         for (let i = 0; i < processedArtworks.length; i += chunkSize) {
-          pages.push(processedArtworks.slice(i, i + chunkSize));
+          pageGroups.push(processedArtworks.slice(i, i + chunkSize));
         }
 
-        let htmlPages = pages.map((pageArtworks, pageIdx) => {
+        pagesHtmlArray = pageGroups.map((pageArtworks, pageIdx) => {
           let gridCards = pageArtworks.map(art => {
             const imgH = art.base64Img ? `<img src="${art.base64Img}" class="grid-img" />` : '<div class="no-img">No Image</div>';
             return `
@@ -840,47 +852,54 @@
                 <div class="artist">${artistName} — Collection Overview</div>
               </div>
               <div class="grid-container">${gridCards}</div>
-              <div class="footer">Page ${pageIdx + 1} of ${pages.length} | Contact: ${contactEmail} ${contactPhone}</div>
+              <div class="footer">Page ${pageIdx + 1} of ${pageGroups.length} | Contact: ${contactEmail} ${contactPhone}</div>
             </div>
           `;
-        }).join('');
-
-        htmlContent = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <style>
-              @page { size: A4 portrait; margin: 0; }
-              body { font-family: 'Georgia', serif; margin: 0; padding: 0; background: #ffffff; color: #1a1a1a; }
-              .page { width: 210mm; height: 297mm; max-height: 297mm; box-sizing: border-box; padding: 12mm 15mm; position: relative; page-break-after: always; break-after: page; overflow: hidden; }
-              .header { border-bottom: 1px solid ${aColor}; padding-bottom: 6px; margin-bottom: 6mm; }
-              .artist { font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-              .grid-container { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 70mm); gap: 5mm; }
-              .grid-card { border: 1px solid #e0e0e0; padding: 6px; box-sizing: border-box; display: flex; flex-direction: column; background: #ffffff; }
-              .img-box { width: 100%; height: 32mm; display: flex; align-items: center; justify-content: center; background: #ffffff; margin-bottom: 3px; }
-              .grid-img { max-width: 100%; max-height: 32mm; object-fit: contain; }
-              .no-img { font-size: 8pt; color: #aaa; font-family: sans-serif; }
-              .card-title { font-size: 8.5pt; font-weight: bold; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-              .card-badge { font-size: 6pt; font-family: sans-serif; color: ${aColor}; font-weight: bold; text-transform: uppercase; }
-              .card-meta { font-size: 7pt; color: #555; font-family: sans-serif; }
-              .card-price { font-size: 8pt; font-weight: bold; color: ${aColor}; margin-top: auto; font-family: sans-serif; }
-              .footer { position: absolute; bottom: 8mm; left: 15mm; right: 15mm; display: flex; justify-content: space-between; font-size: 8pt; color: #888; font-family: sans-serif; }
-            </style>
-          </head>
-          <body>${htmlPages}</body>
-          </html>
-        `;
+        });
       }
 
-      const element = document.createElement('div');
-      element.innerHTML = htmlContent;
-      html2pdf().from(element).set({
+      // Build single wrapper container with absolute clean page-break isolation
+      const container = document.createElement('div');
+      container.innerHTML = pagesHtmlArray.map((pageHtml, idx) => `
+        <div style="width: 210mm; height: 296mm; max-height: 296mm; box-sizing: border-box; padding: 12mm 15mm; position: relative; overflow: hidden; ${idx < pagesHtmlArray.length - 1 ? 'page-break-after: always; break-after: page;' : ''}">
+          ${pageHtml}
+        </div>
+      `).join('');
+
+      // Scoped styles for the html2pdf wrapper container
+      const styleTag = document.createElement('style');
+      styleTag.innerHTML = `
+        body { font-family: 'Georgia', serif; margin: 0; padding: 0; background: #ffffff; color: #1a1a1a; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid ${aColor}; padding-bottom: 6px; margin-bottom: 10px; }
+        .artist { font-size: 13pt; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .collection-badge { font-size: 8.5pt; background: ${aColor}; color: #ffffff; padding: 3px 8px; border-radius: 3px; font-family: sans-serif; }
+        .image-container { width: 100%; height: 125mm; display: flex; align-items: center; justify-content: center; background: #fafafa; margin-bottom: 10px; border: 1px solid #eee; }
+        .artwork-img { max-width: 100%; max-height: 125mm; object-fit: contain; }
+        .no-img { color: #888; font-family: sans-serif; font-size: 9pt; }
+        .details { border-left: 2px solid ${aColor}; padding-left: 12px; }
+        .title { font-size: 15pt; margin: 0 0 4px 0; }
+        .meta-row { font-size: 9pt; margin-bottom: 2px; font-family: sans-serif; color: #444; }
+        .price { font-size: 12pt; font-weight: bold; color: ${aColor}; margin-top: 4px; font-family: sans-serif; }
+        .grid-container { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, 70mm); gap: 5mm; }
+        .grid-card { border: 1px solid #e0e0e0; padding: 6px; box-sizing: border-box; display: flex; flex-direction: column; background: #ffffff; }
+        .img-box { width: 100%; height: 32mm; display: flex; align-items: center; justify-content: center; background: #ffffff; margin-bottom: 3px; }
+        .grid-img { max-width: 100%; max-height: 32mm; object-fit: contain; }
+        .card-title { font-size: 8.5pt; font-weight: bold; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-badge { font-size: 6pt; font-family: sans-serif; color: ${aColor}; font-weight: bold; text-transform: uppercase; }
+        .card-meta { font-size: 7pt; color: #555; font-family: sans-serif; }
+        .card-price { font-size: 8pt; font-weight: bold; color: ${aColor}; margin-top: auto; font-family: sans-serif; }
+        .footer { position: absolute; bottom: 8mm; left: 15mm; right: 15mm; display: flex; justify-content: space-between; font-size: 8pt; color: #888; font-family: sans-serif; }
+      `;
+      container.appendChild(styleTag);
+
+      await savePdfElement(container, {
         margin: 0,
         filename: `Artwork_Catalog_${Date.now()}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      }).save();
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.grid-card', '.image-container'] }
+      });
       showToast("PDF catalog generated successfully!");
     }
 
